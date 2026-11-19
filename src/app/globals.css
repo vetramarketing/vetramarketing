@@ -42,6 +42,14 @@
   scrollbar-color: var(--border-strong) var(--background);
   scrollbar-gutter: stable;
 }
+/* Conceal workspace content, including top-layer dialogs and portals, before a history snapshot. */
+html[data-vetra-covered] body * {
+  visibility: hidden !important;
+}
+html[data-vetra-covered] [data-vetra-shield],
+html[data-vetra-covered] [data-vetra-shield] * {
+  visibility: visible !important;
+}
 * {
   box-sizing: border-box;
 }

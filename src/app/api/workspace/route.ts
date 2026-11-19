@@ -1,4 +1,6 @@
 import 'server-only';
+import { accessRequired } from '@/lib/server/access-response';
+import { hasValidSession } from '@/lib/server/site-access';
 import { MongoNetworkError, MongoServerSelectionError } from 'mongodb';
 import {
   configuredWorkspaceScope,
@@ -48,6 +50,7 @@ function failure(error: unknown): Response {
 }
 
 export async function GET(request: Request) {
+  if (!hasValidSession(request)) return accessRequired();
   if (!process.env.MONGODB_URI?.trim()) return json({ configured: false });
   if (!isLocalWorkspaceRequest(request)) return json({ code: 'LOCAL_ACCESS_REQUIRED' }, 403);
   try {
@@ -101,6 +104,7 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
 }
 
 export async function POST(request: Request) {
+  if (!hasValidSession(request)) return accessRequired();
   if (!isLocalWorkspaceRequest(request)) return json({ code: 'LOCAL_ACCESS_REQUIRED' }, 403);
   try {
     const body = await readBody(request);

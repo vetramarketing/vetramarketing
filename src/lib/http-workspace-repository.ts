@@ -20,6 +20,7 @@ import {
   WORKSPACE_KEY,
 } from './workspace-storage';
 import { uploadWorkspaceLabels } from './order-labels';
+import { workspaceApiFetch } from './workspace-api-fetch';
 
 const endpoint = '/api/workspace';
 
@@ -33,7 +34,7 @@ class WorkspaceNetworkError extends Error {}
 
 async function workspaceRequest(options: RequestInit) {
   try {
-    return await fetch(endpoint, options);
+    return await workspaceApiFetch(endpoint, options);
   } catch (cause) {
     throw new WorkspaceNetworkError('Could not reach the workspace server.', { cause });
   }
@@ -78,6 +79,7 @@ export async function browserSourceNeedsReview(digest?: string) {
 }
 
 async function readResponse(response: Response): Promise<WorkspaceState> {
+  if (response.status === 401) throw new Error('Unlock the workspace to continue.');
   const body = await response.json();
   if (
     response.status === 503 &&

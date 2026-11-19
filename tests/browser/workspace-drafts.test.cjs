@@ -1,10 +1,11 @@
-// Run against a local app with VETRA_TEST_BROWSER_URL and Playwright's chromium installed.
+// Set VETRA_TEST_BROWSER_URL and VETRA_TEST_WORKSPACE_PIN for a disposable local app.
 // node --import tsx --test tests/browser/workspace-drafts.test.cjs
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { createEmptyWorkspace } = require('../../src/lib/data.ts');
 const { newCustomer } = require('../../src/lib/customer-data.ts');
 const { serializeWorkspace } = require('../../src/lib/workspace-storage.ts');
+const { unlockTestContext } = require('./access-fixture.cjs');
 
 const app = process.env.VETRA_TEST_BROWSER_URL;
 test(
@@ -17,6 +18,7 @@ test(
     const browser = await chromium.launch({ executablePath: process.env.VETRA_TEST_CHROMIUM });
     t.after(() => browser.close());
     const context = await browser.newContext({ serviceWorkers: 'block', reducedMotion: 'reduce' });
+    await unlockTestContext(context, base);
     await context.addInitScript(() => localStorage.setItem('vetra-marketing.locale', 'en'));
     const source = createEmptyWorkspace();
     source.groups.push({
@@ -50,6 +52,8 @@ test(
       const request = route.request();
       const url = new URL(request.url());
       if (url.origin !== base) return route.abort();
+      if (url.pathname === '/api/access/status')
+        return route.fulfill({ json: { authenticated: true, expiresAt: Date.now() + 3_600_000 } });
       if (url.pathname === '/api/workspace') {
         if (request.method() === 'POST') {
           writes++;

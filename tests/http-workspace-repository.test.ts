@@ -130,7 +130,8 @@ test('an authorized scoped outage offers the last confirmed snapshot with no wri
       values.set(key, value);
     },
   };
-  Object.defineProperty(globalThis, 'window', { configurable: true, value: { localStorage } });
+  const fakeWindow = Object.assign(new EventTarget(), { localStorage });
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: fakeWindow });
   t.after(() => {
     Reflect.deleteProperty(globalThis, 'window');
   });
@@ -185,6 +186,17 @@ test('an authorized scoped outage offers the last confirmed snapshot with no wri
   await assert.rejects(connectWorkspace(() => {}));
   transport.mock.mockImplementation(async () => outage(db, 403));
   await assert.rejects(connectWorkspace(() => {}));
+  let denied = 0;
+  fakeWindow.addEventListener('vetra-workspace-session-denied', () => denied++);
+  transport.mock.mockImplementation(async () => outage(db, 401));
+  await assert.rejects(
+    connectWorkspace(() => {}),
+    /Unlock/,
+  );
+  await assert.rejects(live.store.load(), /Unlock/);
+  assert.equal(availability.at(-1), null);
+  assert.equal(denied, 2);
+  assert.deepEqual(values, lastConfirmed);
   transport.mock.mockImplementation(async () => {
     throw new TypeError('network offline');
   });

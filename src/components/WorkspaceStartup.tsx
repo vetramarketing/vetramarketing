@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { readBrowserMigrationSource } from '@/lib/http-workspace-repository';
 import { MAX_LABEL_BACKUP_TEXT_BYTES, prepareWorkspaceLabelRestore } from '@/lib/order-labels';
 import type { Translate, Workspace } from '@/lib/types';
@@ -15,11 +15,13 @@ export default function WorkspaceStartup({
   openCache,
   error,
   t,
+  lockButton,
 }: {
   initialize?: (workspace: Workspace) => Promise<unknown>;
   openCache?: () => void;
   error?: string;
   t: Translate;
+  lockButton: ReactNode;
 }) {
   const [source, setSource] = useState<Source | null>(null);
   const [issue, setIssue] = useState('');
@@ -128,6 +130,7 @@ export default function WorkspaceStartup({
       <button className={styles.secondary} disabled={busy} onClick={() => window.location.reload()}>
         {t('Reload', 'โหลดใหม่')}
       </button>
+      {lockButton}
     </main>
   );
 }

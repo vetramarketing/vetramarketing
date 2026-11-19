@@ -1,4 +1,6 @@
 import 'server-only';
+import { accessRequired } from '@/lib/server/access-response';
+import { hasValidSession } from '@/lib/server/site-access';
 import { CATALOG_IMAGE_LIMITS } from '@/lib/cloudinary-media';
 import { getWorkspaceMongoDb, workspaceDatabaseScope } from '@/lib/server/mongo-workspace';
 import {
@@ -16,6 +18,7 @@ const json = (value: unknown, status = 200) =>
 type Context = { params: Promise<{ collection: string; recordId: string }> };
 
 export async function PUT(request: Request, context: Context) {
+  if (!hasValidSession(request)) return accessRequired();
   if (!isLocalWorkspaceRequest(request)) return json({ code: 'LOCAL_ACCESS_REQUIRED' }, 403);
   const id = request.headers.get('x-submission-id') ?? '';
   if (!validSubmissionId(id) || !request.body) return json({ code: 'INVALID_SUBMISSION' }, 400);

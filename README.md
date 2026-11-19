@@ -4,12 +4,17 @@ A Thai/English workspace for managing companies, customers, products, orders, an
 
 ## Run locally
 
+Use Node.js 22.13 or later. On first setup, choose an eight-digit PIN at the hidden prompt.
+
 ```powershell
 npm.cmd install
+npm.cmd run set-pin
 npm.cmd run dev
 ```
 
 Open http://127.0.0.1:3100. Thai is the initial language. The app saves the language choice in this browser.
+
+The site requires the PIN for workspace pages, downloads and API requests. A session expires after eight hours. Save any open edits before choosing **Lock workspace**. Locking ends that browser session across its tabs. The server allows up to five failed attempts in a rolling 15-minute window. The PIN verifier is stored in the server's ignored `.env.local`. Sessions and the attempt counter persist in `.local-data/site-access/` independently of MongoDB. To rotate the PIN, rerun `npm run set-pin` and restart the server. Rotation invalidates existing sessions.
 
 ```powershell
 npm.cmd run typecheck

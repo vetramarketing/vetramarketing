@@ -1,5 +1,6 @@
 'use client';
 
+import { workspaceApiFetch } from '@/lib/workspace-api-fetch';
 import {
   useCallback,
   useEffect,
@@ -662,7 +663,7 @@ export function SettingsPanel({
     setCleaning(true);
     setCleanupResult('');
     try {
-      const response = await fetch('/api/workspace/media/cleanup', { method: 'POST' });
+      const response = await workspaceApiFetch('/api/workspace/media/cleanup', { method: 'POST' });
       if (!response.ok) throw new Error('Cleanup failed');
       const { deleted, failed } = await response.json();
       if (![deleted, failed].every((count) => Number.isSafeInteger(count) && count >= 0))

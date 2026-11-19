@@ -4,6 +4,7 @@ import {
   type CloudinaryImage,
 } from './cloudinary-media';
 import { pngFrameMode, validatePreparedCatalogFile } from './catalog-media-contract';
+import { workspaceApiFetch } from './workspace-api-fetch';
 
 export type CatalogKind = 'products' | 'companies';
 export interface PreparedCatalogImage {
@@ -166,7 +167,7 @@ export class CatalogFileSubmission {
     private kind: CatalogKind,
     private recordId: string,
     private file: Blob,
-    private request: typeof fetch = (input, init) => fetch(input, init),
+    private request: typeof fetch = workspaceApiFetch,
   ) {}
 
   async stage() {

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "set-pin": "node scripts/set-workspace-pin.mjs",
     "dev": "next dev --hostname 127.0.0.1 --port 3100",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1 --port 3100",

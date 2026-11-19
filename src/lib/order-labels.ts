@@ -1,4 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
+import { workspaceApiFetch } from './workspace-api-fetch';
 import type { OrderLabel } from './orders';
 import type { Workspace } from './types';
 import { deserializeWorkspace, serializeWorkspace } from './workspace-storage';
@@ -136,7 +137,7 @@ export const browserCarrierLabelStore: CarrierLabelStore = {
     if (!remoteCarrierLabels) return indexedDbCarrierLabelStore.read(id);
     const local = await indexedDbCarrierLabelStore.read(id).catch(() => undefined);
     if (local) return local;
-    const response = await fetch(labelEndpoint(id), { cache: 'no-store' });
+    const response = await workspaceApiFetch(labelEndpoint(id), { cache: 'no-store' });
     if (response.status === 404) return undefined;
     if (!response.ok) throw new Error('Could not download the carrier PDF from MongoDB.');
     return new Uint8Array(await response.arrayBuffer());
@@ -147,7 +148,7 @@ export async function uploadWorkspaceLabels(workspace: Workspace, confirmed: Set
   for (const label of referencedLabels(workspace)) {
     if (confirmed.has(label.id)) continue;
     const bytes = await readCarrierLabel(label);
-    const response = await fetch(labelEndpoint(label.id), {
+    const response = await workspaceApiFetch(labelEndpoint(label.id), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/pdf' },
       body: Uint8Array.from(bytes),

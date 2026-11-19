@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="referrer" content="same-origin" />
+    <meta name="theme-color" content="#131922" />
+    <title>ปลดล็อกพื้นที่ทำงาน | VETRA Marketing</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/access/unlock.css" />
+    <script src="/access/unlock.js" defer></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="brand">
+        <img src="/logo_white.svg" width="1211" height="202" alt="VETRA" />
+        <span lang="en">Marketing</span>
+      </div>
+      <div class="languages" id="languages" role="group" aria-label="ภาษา" hidden>
+        <button type="button" lang="th" data-locale="th" aria-pressed="true">ไทย</button>
+        <button type="button" lang="en" data-locale="en" aria-label="English" aria-pressed="false">
+          EN
+        </button>
+      </div>
+    </header>
+    <main>
+      <section class="card" aria-labelledby="heading">
+        <div class="illustration" aria-hidden="true">
+          <div class="seal"><span class="lock"></span></div>
+        </div>
+        <div class="content">
+          <h1 id="heading">ปลดล็อกพื้นที่ทำงาน</h1>
+          <form action="/api/access/unlock" method="post" id="unlock-form">
+            <label for="pin" id="pin-label">รหัส PIN 8 หลัก</label>
+            <input
+              id="pin"
+              name="pin"
+              type="password"
+              inputmode="numeric"
+              autocomplete="current-password"
+              pattern="[0-9]{8}"
+              minlength="8"
+              maxlength="8"
+              required
+              dir="ltr"
+              placeholder="········"
+            />
+            <input type="hidden" name="next" id="next" value="__WORKSPACE_RETURN__" />
+            <p id="access-status" class="status" role="alert"><!--access-status--></p>
+            <button class="submit" type="submit" id="submit">ปลดล็อก</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

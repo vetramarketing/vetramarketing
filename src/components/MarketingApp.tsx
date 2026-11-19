@@ -29,6 +29,7 @@ import {
   Globe2,
   LayoutDashboard,
   ListFilter,
+  LockKeyhole,
   Menu,
   MessageCircle,
   Package,
@@ -359,7 +360,13 @@ function WorkspaceEditorView({
   return <Activity mode={visible ? 'visible' : 'hidden'}>{children(setEditorOpen)}</Activity>;
 }
 
-export default function MarketingApp({ initialView = 'overview' }: { initialView?: View }) {
+export default function MarketingApp({
+  initialView = 'overview',
+  onLock,
+}: {
+  initialView?: View;
+  onLock: () => void;
+}) {
   const [data, setData] = useState<Workspace | null>(null),
     [revision, setRevision] = useState(''),
     [locale, setLocale] = useState<Locale>('th'),
@@ -1852,7 +1859,20 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
       </div>
     );
   }
-  if (startup) return <WorkspaceStartup {...startup} t={t} />;
+  const lockLabel = t('Lock workspace', 'ล็อกพื้นที่ทำงาน');
+  const lockButton = (
+    <button
+      type="button"
+      className={s.lockWorkspace}
+      aria-label={lockLabel}
+      title={lockLabel}
+      onClick={onLock}
+    >
+      <LockKeyhole size={18} aria-hidden="true" />
+      <span>{lockLabel}</span>
+    </button>
+  );
+  if (startup) return <WorkspaceStartup {...startup} t={t} lockButton={lockButton} />;
   if (!data && view === 'posts')
     return (
       <div className={s.app}>
@@ -1860,6 +1880,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
           <span className={s.loadingBrand}>
             <img src="/logo_white.svg" alt="VETRA" width={1211} height={202} /> Marketing
           </span>
+          {lockButton}
         </header>
         <main className={s.main}>
           <div className={s.workspaceBar} aria-hidden="true">
@@ -1889,6 +1910,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
         <img src="/logo_white.svg" alt="VETRA" width={1211} height={202} />
         <strong>Marketing</strong>
         <span>{t('Opening your workspace…', 'กำลังเปิดพื้นที่ทำงาน…')}</span>
+        {lockButton}
       </div>
     );
   const selectedCompanyName =
@@ -2077,7 +2099,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
                 {locale === 'th' ? 'TH' : 'EN'}
               </button>
             </div>
-            <span className={s.topAvatar}>V</span>
+            {lockButton}
           </div>
         </header>
         <main id="main" className={s.main} tabIndex={-1}>

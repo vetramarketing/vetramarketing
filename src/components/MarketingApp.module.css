@@ -261,6 +261,28 @@
   display: grid;
   place-items: center;
 }
+.lockWorkspace {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.65rem;
+  min-width: 2.65rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  color: var(--text-secondary);
+  background: var(--surface);
+  font-size: var(--text-sm);
+}
+@media (max-width: 60rem) {
+  .topbar .lockWorkspace {
+    padding: 0.4rem;
+  }
+  .topbar .lockWorkspace span {
+    display: none;
+  }
+}
 .activityButton i {
   position: absolute;
   right: 0.3rem;
