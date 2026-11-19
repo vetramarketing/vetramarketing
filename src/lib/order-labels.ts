@@ -76,7 +76,7 @@ function openDatabase(): Promise<IDBDatabase> {
   return databasePromise;
 }
 
-export const browserCarrierLabelStore: CarrierLabelStore = {
+export const indexedDbCarrierLabelStore: CarrierLabelStore = {
   async read(id) {
     try {
       const database = await openDatabase();
@@ -118,6 +118,44 @@ export const browserCarrierLabelStore: CarrierLabelStore = {
     }
   },
 };
+
+let remoteCarrierLabels = false;
+
+export function setRemoteCarrierLabels(enabled: boolean) {
+  remoteCarrierLabels = enabled;
+}
+
+function labelEndpoint(id: string) {
+  return '/api/workspace/labels/' + encodeURIComponent(id);
+}
+
+// New attachments are staged in IndexedDB until the workspace save is submitted.
+export const browserCarrierLabelStore: CarrierLabelStore = {
+  write: (id, bytes) => indexedDbCarrierLabelStore.write(id, bytes),
+  async read(id) {
+    if (!remoteCarrierLabels) return indexedDbCarrierLabelStore.read(id);
+    const local = await indexedDbCarrierLabelStore.read(id).catch(() => undefined);
+    if (local) return local;
+    const response = await fetch(labelEndpoint(id), { cache: 'no-store' });
+    if (response.status === 404) return undefined;
+    if (!response.ok) throw new Error('Could not download the carrier PDF from MongoDB.');
+    return new Uint8Array(await response.arrayBuffer());
+  },
+};
+
+export async function uploadWorkspaceLabels(workspace: Workspace, confirmed: Set<string>) {
+  for (const label of referencedLabels(workspace)) {
+    if (confirmed.has(label.id)) continue;
+    const bytes = await readCarrierLabel(label);
+    const response = await fetch(labelEndpoint(label.id), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/pdf' },
+      body: Uint8Array.from(bytes),
+    });
+    if (!response.ok) throw new Error('Could not save the carrier PDF to MongoDB. Retry the save.');
+    confirmed.add(label.id);
+  }
+}
 
 async function sha256(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes).buffer);

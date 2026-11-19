@@ -16,4 +16,4 @@ Customer search combines words in any order across identity/contact details, com
 
 The active storage format is v12 under `vetra-marketing.workspace.v12`. Loading an older workspace maps `stores`, `storeId`, and `storeIds` to companies while retaining IDs and record data. The old keys remain recovery copies. The new key prevents an older open app version from overwriting new customer data. `/companies` is canonical, and `/stores` redirects there. New CSV exports use Company headers and legacy Store headers still import.
 
-The app remains browser-local. GitHub fields hold contact identity only; no passwords or access tokens are requested. The future MongoDB contracts separate company, business-type, and customer documents and require an authorized workspace ID.
+The loopback app stores companies, business types, and customers in separate MongoDB collections when configured. GitHub fields hold contact identities. See [MongoDB storage and migration](MONGODB_WORKFLOW.md).

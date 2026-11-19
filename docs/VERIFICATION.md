@@ -1,5 +1,9 @@
 # Initial build verification
 
+## MongoDB and Cloudinary migration — 19 November 2026
+
+The live migration used a portable backup exported from the operator's existing Brave workspace. A fresh MongoDB connection verified all nine record collections and workspace metadata against that backup. The catalog image delivered by Cloudinary matched the bundled PNG by SHA-256. The local production app loaded the same MongoDB revision, and Settings displayed MongoDB in the original browser. All 675 tests passed, including an isolated replica-set test for concurrent writes, rejected incomplete imports, and immutable private PDF storage.
+
 ## Scroll before copying the post table — 10 November 2026
 
 - **Facebook — Copy post table outerHTML** now awaits the complete **Very fast post table scroll** routine before taking the current table snapshot. It confirms Viewers descending, returns to the top, traverses the table, and copies after eight quiet seconds at the bottom. A table without a vertical scroller can still be copied after sorting is confirmed.
@@ -377,4 +381,4 @@ Test posts and the test group were moved to recoverable Trash after verification
 
 ## Remaining integration work
 
-The current version is browser-local. Shared database storage, sign-in and authorization, real account connections, automated metric retrieval, and media uploads are not configured. No live Google Sheet, social account, or production business record was modified. See the README for the storage boundary and setup commands.
+These initial checks used the browser-local version. See the README and the migration verification above for current storage and setup.

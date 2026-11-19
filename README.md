@@ -34,27 +34,35 @@ npm.cmd run build
 - Import existing posts from CSV with a preview and row validation. JSON backup/restore, company/group management, and 30-day Trash recovery are available in Settings and the drawer.
 - In the Post library, use **Update metrics** to paste a Meta table or select an HTML/TXT file. Matching starts with a unique publication date and minute, then checks any available Group/Post identity; an exact link can identify a post with an unknown saved date. Preview Viewers, Comments when the source provides an exact count, dates, and rows needing review before saving. An optional publication year handles Meta dates without a year. Ambiguous, duplicate, conflicting, and unmatched rows are skipped; a lower source Viewers total is not applied.
 - Products: name, optional HTTPS image URL, and sort order. Company associations control product suggestions in the post form. Existing post product/campaign text stays unchanged; catalog renaming or deletion does not rewrite posts.
-- The requested **น้ำผึ้งดอกกาแฟ ESHAN 320g** product is added once on app load using `public/product/Clean ESHAN honey jar cutout.png`. The PNG is served locally; no Cloudinary upload occurs. A saved update marker prevents duplicates and respects later renaming/deletion. Matching products and custom images are preserved. The supplied label reads 380 grams; the name follows the user's explicit 320g text.
+- The requested **น้ำผึ้งดอกกาแฟ ESHAN 320g** product is added once on app load using `public/product/Clean ESHAN honey jar cutout.png`. The MongoDB migration uploads this PNG to Cloudinary and verifies the delivered bytes. A saved update marker prevents duplicates and respects later renaming/deletion. Matching products and custom images are preserved. The supplied label reads 380 grams; the name follows the user's explicit 320g text.
 - Companies: name, business type, optional HTTPS logo URL, and owner name. Drag the handle or use its arrow keys to set display order. Older initials, colors, and descriptions remain in saved data for compatibility. `/stores` redirects to `/companies`.
 - The 36 Facebook groups supplied on 5 November 2026 are added once under VETRA Software on app load. Existing company IDs, group details, and Trash records are preserved; the named company is created only if absent. The 12 named group links stay in Posting notes with blank numeric IDs and can be opened or edited from the group list. A saved update marker preserves later edits and removals.
 - **Customer order history** (`/customers`). Open the units button on a customer row to see their orders and combined quantity. Enter a quantity and choose **Add order**, or use the trash button beside an order to remove it. The same order appears on `/orders`. Selecting a product scopes the units shown in the customer list.
 - Customers belong to a company. Save their name, organization, contact details, website, last contact date, social links, and notes. Software-house profiles also offer multiple domains with expiry dates and GitHub identities. Business types control these sections and allow additional typed fields, so new types can be added without changing the customer schema. Customers can be restored from Trash for 30 days.
 - Delete products from their editor and restore them from Trash within 30 days. Product images and company logos have a placeholder when blank or unavailable. Catalog data is included in JSON backups; CSV remains a post-only export.
-- There is no automatic publishing, live social metrics connection, team login, or cloud sync.
+- Social publishing and metric updates are manual. The private workspace runs on the operator's computer.
 
 ## Data and migration
 
-Orders, shipping settings, and order-number sequence counters are included in the current workspace format. PDF bytes live in IndexedDB with content hashes. Settings backups include the referenced PDFs (also Trash) in a portable JSON envelope. Restore validates and previews first, then saves PDFs only on confirmation. The limit is 10 MB per PDF, and 100 MB of PDF bytes per backup. The separate server booking journal must also be backed up if Flash is enabled. See the shipping guide.
+Configure the server in `.env.local` using `.env.example`. With a MongoDB URI, the loopback app reads and saves the workspace in MongoDB. Use the original browser and address for first-time import. An empty database can be initialized from that browser's workspace or a Settings backup. A database connection error blocks editing until the connection recovers. Without a configured URI, the app uses browser storage.
 
-Active data stays in this browser under `vetra-marketing.workspace.v12`. It includes companies, business types, customers, products, publishing destinations, console scripts, post pin state, optional comment counts, and optional Cloudinary asset metadata. Scripts, including their exact code and Trash records, are included in Settings JSON backups. Older backups without scripts open with an empty library. Post title, content, planning status, planned date, and dated Viewer history are absent from active storage. A post may be Pending with or without a publication date. Older records without a pin field load as unpinned.
+For a migration from a portable backup, use Node.js 22 or newer. The command below validates the source and connection. Append `--apply` to initialize the database and compare the readback, or `--verify` to repeat the comparison. The import preserves an existing database.
+
+```powershell
+node --env-file=.env.local --import tsx scripts/migrate-workspace.ts "C:\path\to\workspace-backup.json"
+```
+
+Orders, shipping settings, and order-number sequence counters are included in the current workspace format. The browser stages carrier PDFs in IndexedDB. MongoDB stores their bytes privately under content hashes when the workspace is saved. Settings backups include referenced PDFs from active and trashed orders. Restore validates and previews the backup before saving. The limit is 10 MB per PDF and 100 MB of PDF bytes per backup. Back up the separate server booking journal when Flash is enabled. See the shipping guide.
+
+The original browser workspace uses `vetra-marketing.workspace.v12`. After migration, a separate browser key caches the MongoDB workspace. Settings backups include companies, business types, customers, products, orders, groups, publishing destinations, scripts, posts, Trash, and Cloudinary asset metadata. A post may be Pending with or without a publication date. Older records without a pin field load as unpinned.
 
 On first load, v1–v11 workspaces migrate to v12. Existing store IDs become company IDs, including product/post/group/destination relationships. Earlier localStorage keys remain available for recovery. Existing names, images, order, post links, pending records, and latest Viewers totals are preserved. See [Companies and customers](docs/COMPANIES_AND_CUSTOMERS.md).
 
 Each opening balance becomes a numbered order dated from the customer's last contact. Missing dates stay blank and can be entered in the order editor. Workspaces predating opening balances import each customer's recorded quantities once, accounting for units already on orders.
 
-Cloudinary data and upload/save contracts are prepared for product images and company logos. Uploads and remote deletion are not enabled. Existing image URLs remain supported; optional asset IDs survive saves, backups, and Trash. See `docs/CLOUDINARY_WORKFLOW.md` and `.env.example` for the server setup and remaining API work. Never put secrets in browser settings or `NEXT_PUBLIC_` variables.
+MongoDB workspace saves migrate product images and company logos to Cloudinary, including product images in Trash. The server verifies each new image before committing its URL and asset metadata. Existing browser backups retain their original image references. Configure Cloudinary credentials only on the server. See [Cloudinary catalog images](docs/CLOUDINARY_WORKFLOW.md).
 
-Browser storage can be cleared by the user or browser. Download backups regularly. Corrupt saved data is preserved and edits are blocked until a valid restore. A shared deployment would need authentication, per-workspace authorization, and server persistence. No social account credentials are stored here.
+Download portable backups from Settings. Keep the app bound to loopback on a trusted computer. A shared deployment requires user authentication and workspace authorization.
 
 Viewer totals are summed per post and may count the same people across posts. The app does not calculate daily growth or retain a measurement timeline in its active data.
 
@@ -78,4 +86,4 @@ Viewer totals are summed per post and may count the same people across posts. Th
 - `src/lib/meta-viewers-import.ts`: safe Meta row matching and current-total update planning.
 - `src/lib/data.ts`: schema validation, URLs, retention, and Viewers totals.
 
-Read `AGENTS.md` and the project documents before further changes. See `docs/MONGODB_WORKFLOW.md` for the future API and migration workflow.
+Read `AGENTS.md` and the project documents before further changes. See [MongoDB storage and migration](docs/MONGODB_WORKFLOW.md) for the persistence and recovery workflow.

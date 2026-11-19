@@ -300,7 +300,7 @@ export default function OrdersPanel(props: OrdersProps) {
           <span>
             {t(`${visible.length} orders in this view`, `${visible.length} ออเดอร์ในมุมมองนี้`)}
           </span>
-          <span>{t('Saved in this browser', 'บันทึกในเบราว์เซอร์นี้')}</span>
+          <span>{t('Saved in workspace', 'บันทึกในพื้นที่ทำงาน')}</span>
         </div>
       </section>
       {editing && (

@@ -773,7 +773,7 @@ export default function CustomersPanel({
                   `${visible.length} ลูกค้าในมุมมองนี้`,
                 )}
           </span>
-          <span>{t('Saved in this browser', 'บันทึกในเบราว์เซอร์นี้')}</span>
+          <span>{t('Saved in workspace', 'บันทึกในพื้นที่ทำงาน')}</span>
         </div>
       </section>
       {history && (

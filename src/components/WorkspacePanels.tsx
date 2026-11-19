@@ -43,8 +43,10 @@ import { facebookGroupUrl } from '@/lib/facebook-group-link';
 import { productCompanyIdMap } from '@/lib/product-company';
 import { bangkokToday } from '@/lib/post-clicks';
 import type { WorkspaceRepository } from '@/lib/workspace-repository';
+import { readBrowserMigrationSource } from '@/lib/http-workspace-repository';
 import {
   exportWorkspaceWithLabels,
+  indexedDbCarrierLabelStore,
   prepareWorkspaceLabelRestore,
   type PreparedWorkspaceLabelRestore,
   MAX_LABEL_BACKUP_TEXT_BYTES,
@@ -530,7 +532,8 @@ export function SettingsPanel({
   notify,
   repository,
   revision,
-}: PanelProps & { repository: WorkspaceRepository; revision: string }) {
+  mongo,
+}: PanelProps & { repository: WorkspaceRepository; revision: string; mongo: boolean }) {
   const [pending, setPending] = useState<Workspace | null>(null);
   const preparedRestore = useRef<PreparedWorkspaceLabelRestore | null>(null);
   const liveRevision = useRef(revision);
@@ -542,10 +545,14 @@ export function SettingsPanel({
   const [resetOpen, setResetOpen] = useState(false);
   const [resetRevision, setResetRevision] = useState<string | null>(null);
   const [olderBackups, setOlderBackups] = useState<Array<{ key: string; version: string }>>([]);
+  const [hasBrowserSource, setHasBrowserSource] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     try {
       setOlderBackups(repository.listOlderBackups());
+      setHasBrowserSource(
+        mongo && (!!repository.readPreservedRaw() || repository.listOlderBackups().length > 0),
+      );
     } catch {
       // The active workspace can still be used if browser storage is unavailable.
     }
@@ -573,8 +580,8 @@ export function SettingsPanel({
     } catch (cause) {
       setError(
         t(
-          'Backup could not be completed. Check that all attached carrier PDFs are available in this browser.',
-          'สำรองข้อมูลไม่สำเร็จ โปรดตรวจสอบว่า PDF ใบปะหน้าที่แนบไว้ยังอยู่ในเบราว์เซอร์นี้',
+          'Backup could not be completed. Check that every attached carrier PDF is available.',
+          'สำรองข้อมูลไม่สำเร็จ โปรดตรวจสอบว่าสามารถเข้าถึง PDF ใบปะหน้าที่แนบไว้ทุกไฟล์',
         ) +
           ' ' +
           (cause instanceof Error ? cause.message : ''),
@@ -637,7 +644,7 @@ export function SettingsPanel({
         </div>
         <span className={styles.localBadge}>
           <LockKeyhole size={16} />
-          {t('On this browser', 'ในเบราว์เซอร์นี้')}
+          {mongo ? 'MongoDB' : t('On this browser', 'ในเบราว์เซอร์นี้')}
         </span>
       </div>
       <div className={styles.settingsGrid}>
@@ -645,22 +652,33 @@ export function SettingsPanel({
           <span className={styles.settingsIcon}>
             <ShieldCheck size={25} />
           </span>
-          <h3>{t('A local workspace', 'พื้นที่ทำงานในเบราว์เซอร์')}</h3>
+          <h3>
+            {mongo
+              ? t('MongoDB workspace', 'พื้นที่ทำงาน MongoDB')
+              : t('A local workspace', 'พื้นที่ทำงานในเบราว์เซอร์')}
+          </h3>
           <p>
-            {t(
-              'Your companies, customers, products, orders, carrier PDFs, posts, scripts, and Viewers totals are saved in this browser on this device.',
-              'บริษัท ลูกค้า สินค้า ออเดอร์ PDF ใบปะหน้า โพสต์ สคริปต์ และยอดผู้ชมถูกบันทึกในเบราว์เซอร์นี้บนอุปกรณ์นี้',
-            )}
+            {mongo
+              ? t(
+                  'Your workspace records and carrier PDFs are saved in MongoDB.',
+                  'ข้อมูลพื้นที่ทำงานและ PDF ใบปะหน้าถูกบันทึกใน MongoDB',
+                )
+              : t(
+                  'Your companies, customers, products, orders, carrier PDFs, posts, scripts, and Viewers totals are saved in this browser on this device.',
+                  'บริษัท ลูกค้า สินค้า ออเดอร์ PDF ใบปะหน้า โพสต์ สคริปต์ และยอดผู้ชมถูกบันทึกในเบราว์เซอร์นี้บนอุปกรณ์นี้',
+                )}
           </p>
-          <div className={styles.infoNote}>
-            <CircleHelp size={20} />
-            <p>
-              {t(
-                'There is no cloud sync or shared team login yet. Clearing browser data can remove your workspace. Download regular backups and keep them somewhere safe.',
-                'ยังไม่มีการซิงก์บนคลาวด์หรือบัญชีทีมร่วมกัน การล้างข้อมูลเบราว์เซอร์อาจทำให้ข้อมูลหาย โปรดดาวน์โหลดไฟล์สำรองและเก็บไว้ในที่ปลอดภัย',
-              )}
-            </p>
-          </div>
+          {!mongo && (
+            <div className={styles.infoNote}>
+              <CircleHelp size={20} />
+              <p>
+                {t(
+                  'There is no cloud sync or shared team login yet. Clearing browser data can remove your workspace. Download regular backups and keep them somewhere safe.',
+                  'ยังไม่มีการซิงก์บนคลาวด์หรือบัญชีทีมร่วมกัน การล้างข้อมูลเบราว์เซอร์อาจทำให้ข้อมูลหาย โปรดดาวน์โหลดไฟล์สำรองและเก็บไว้ในที่ปลอดภัย',
+                )}
+              </p>
+            </div>
+          )}
           <div className={styles.featureLine}>
             <Check size={18} />
             {t('Track published posts and viewers', 'ติดตามโพสต์ที่เผยแพร่แล้วและยอดผู้ชม')}
@@ -690,6 +708,29 @@ export function SettingsPanel({
               <ArrowUpFromLine size={18} />
               {t('Restore backup', 'กู้คืนไฟล์สำรอง')}
             </button>
+            {hasBrowserSource && (
+              <button
+                className={styles.secondaryButton}
+                onClick={async () => {
+                  try {
+                    const source = readBrowserMigrationSource();
+                    if (!source)
+                      throw new Error(
+                        t('The browser copy is unavailable.', 'ไม่พบสำเนาในเบราว์เซอร์'),
+                      );
+                    downloadJson(
+                      await exportWorkspaceWithLabels(source.workspace, indexedDbCarrierLabelStore),
+                      `vetra-browser-workspace-${bangkokToday()}.json`,
+                    );
+                  } catch (cause) {
+                    setError(cause instanceof Error ? cause.message : String(cause));
+                  }
+                }}
+              >
+                <ArrowDownToLine size={18} />
+                {t('Download original browser copy', 'ดาวน์โหลดสำเนาเดิมจากเบราว์เซอร์')}
+              </button>
+            )}
             <input
               ref={fileRef}
               className={styles.hiddenInput}

@@ -101,7 +101,9 @@ import { selectNextPostLink } from '@/lib/next-post-link';
 import { openPostLinkInNewTab } from '@/lib/open-post-link';
 import { readPostCompanySelection, writePostCompanySelection } from '@/lib/post-company-selection';
 import { preparePostSaveWithGroup, PostGroupSaveError } from '@/lib/post-save-with-group';
-import { createBrowserWorkspaceRepository } from '@/lib/remote-workspace-repository';
+import { browserSourceNeedsReview, connectWorkspace } from '@/lib/http-workspace-repository';
+import { setRemoteCarrierLabels } from '@/lib/order-labels';
+import WorkspaceStartup from './WorkspaceStartup';
 import {
   WorkspaceIdentityConflict,
   WorkspaceRemovedError,
@@ -348,6 +350,12 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
     [sampleImporting, setSampleImporting] = useState(false),
     [latestReadingsImporting, setLatestReadingsImporting] = useState(false),
     [storageError, setStorageError] = useState(''),
+    [mongo, setMongo] = useState(false),
+    [browserCopyDiffers, setBrowserCopyDiffers] = useState(false),
+    [startup, setStartup] = useState<{
+      error?: string;
+      initialize?: (workspace: Workspace) => Promise<unknown>;
+    } | null>(null),
     [sort, setSort] = useState<PostSort>('viewers'),
     [pinSavingId, setPinSavingId] = useState<string | null>(null),
     [postClicks, setPostClicks] = useState<DailyPostClicks>({ day: '', counts: {} }),
@@ -667,60 +675,93 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
     );
   }
   useEffect(() => {
-    const store = createBrowserWorkspaceRepository();
-    repository.current = store;
     let active = true;
-    try {
-      setLocale(store.readLocale());
-    } catch {
-      setLocale('th');
-    }
-    void store.load().then(
-      async (snapshot) => {
+    let unsubscribe: (() => void) | undefined;
+    void connectWorkspace(() =>
+      notify(
+        t(
+          'MongoDB saved the workspace. The browser recovery copy could not be updated.',
+          'บันทึกพื้นที่ทำงานใน MongoDB แล้ว แต่ไม่สามารถอัปเดตสำเนาในเบราว์เซอร์',
+        ),
+      ),
+    )
+      .then(({ store, mode, initialize, migrationSourceDigest }) => {
         if (!active) return;
+        repository.current = store;
+        setMongo(mode === 'mongo');
+        setRemoteCarrierLabels(mode === 'mongo');
         try {
-          const named = await ensureVetraCompanyName(store, snapshot);
-          const catalog = await ensureProvidedProducts(store, named);
-          const posts = await ensureProvidedPostLinks(store, catalog);
-          const viewers = await ensureProvidedViewerUpdates(store, posts);
-          const updated = await ensureProvidedMissingPosts(store, viewers);
-          const recent = await ensureProvidedMetaUpdate(store, updated);
-          const unmatched = await ensureProvidedMetaUnmatchedPosts(store, recent);
-          const remaining = await ensureProvidedMetaRemaining(store, unmatched);
-          const softwareGroups = await ensureProvidedSoftwareGroups(store, remaining);
-          const consoleScripts = await ensureProvidedConsoleScripts(store, softwareGroups);
-          if (active) applySnapshot(consoleScripts);
+          setLocale(store.readLocale());
         } catch {
-          const latest = await store.load().catch(() => snapshot);
-          if (!active) return;
-          applySnapshot(latest);
-          notify(
-            t(
-              'Workspace updates could not be saved. Your existing data is available; reload to retry.',
-              'บันทึกการอัปเดตพื้นที่ทำงานไม่สำเร็จ ข้อมูลเดิมยังใช้งานได้ โหลดหน้าใหม่เพื่อลองอีกครั้ง',
-            ),
-          );
+          setLocale('th');
         }
-      },
-      () => {
-        if (!active) return;
-        setStorageError(
-          'Saved data could not be loaded. It has been preserved. Export or restore a backup in Settings before continuing. / ไม่สามารถโหลดข้อมูลที่บันทึกไว้ได้ ข้อมูลเดิมยังคงอยู่',
+        if (initialize) {
+          setStartup({ initialize });
+          return;
+        }
+        void browserSourceNeedsReview(migrationSourceDigest)
+          .then((differs) => {
+            if (active) setBrowserCopyDiffers(differs);
+          })
+          .catch(() => {
+            /* The stored copy remains available for explicit recovery. */
+          });
+        void store.load().then(
+          async (snapshot) => {
+            if (!active) return;
+            try {
+              const named = await ensureVetraCompanyName(store, snapshot);
+              const catalog = await ensureProvidedProducts(store, named);
+              const posts = await ensureProvidedPostLinks(store, catalog);
+              const viewers = await ensureProvidedViewerUpdates(store, posts);
+              const updated = await ensureProvidedMissingPosts(store, viewers);
+              const recent = await ensureProvidedMetaUpdate(store, updated);
+              const unmatched = await ensureProvidedMetaUnmatchedPosts(store, recent);
+              const remaining = await ensureProvidedMetaRemaining(store, unmatched);
+              const softwareGroups = await ensureProvidedSoftwareGroups(store, remaining);
+              const consoleScripts = await ensureProvidedConsoleScripts(store, softwareGroups);
+              if (active) applySnapshot(consoleScripts);
+            } catch {
+              const latest = await store.load().catch(() => snapshot);
+              if (!active) return;
+              applySnapshot(latest);
+              notify(
+                t(
+                  'Workspace updates could not be saved. Your existing data is available; reload to retry.',
+                  'บันทึกการอัปเดตพื้นที่ทำงานไม่สำเร็จ ข้อมูลเดิมยังใช้งานได้ โหลดหน้าใหม่เพื่อลองอีกครั้ง',
+                ),
+              );
+            }
+          },
+          (error: unknown) => {
+            if (!active) return;
+            if (mode === 'mongo') {
+              setStartup({ error: error instanceof Error ? error.message : String(error) });
+              return;
+            }
+            setStorageError(
+              'Saved data could not be loaded. It has been preserved. Export or restore a backup in Settings before continuing. / ไม่สามารถโหลดข้อมูลที่บันทึกไว้ได้ ข้อมูลเดิมยังคงอยู่',
+            );
+            setData(createEmptyWorkspace());
+          },
         );
-        setData(createEmptyWorkspace());
-      },
-    );
-    const unsubscribe = store.subscribe((result) => {
-      if (!active) return;
-      if (result instanceof Error) {
-        setStorageError('Updated workspace could not be read. / ไม่สามารถอ่านข้อมูลที่อัปเดตได้');
-      } else {
-        applySnapshot(result);
-      }
-    });
+        unsubscribe = store.subscribe((result) => {
+          if (!active) return;
+          if (result instanceof Error) {
+            setStorageError(
+              'Updated workspace could not be read. / ไม่สามารถอ่านข้อมูลที่อัปเดตได้',
+            );
+          } else {
+            applySnapshot(result);
+          }
+        });
+      })
+      .catch((error: unknown) => {
+        if (active) setStartup({ error: error instanceof Error ? error.message : String(error) });
+      });
     return () => {
       active = false;
-      unsubscribe();
+      unsubscribe?.();
       repository.current = null;
     };
   }, []);
@@ -891,7 +932,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
         const store = repository.current;
         if (!store) throw new Error('Workspace storage is not ready.');
         const saved =
-          storageError && allowRecovery
+          storageError && allowRecovery && !mongo
             ? await store.recover(next)
             : await store.commit({
                 workspace: next,
@@ -939,7 +980,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
         return false;
       }
     },
-    [storageError, revision, t, notify, applySnapshot, noteRepositoryFailure],
+    [storageError, revision, t, notify, applySnapshot, noteRepositoryFailure, mongo],
   );
   const togglePostPin = useCallback(
     async (post: Post) => {
@@ -1522,7 +1563,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
               <strong>{t('My workspace', 'พื้นที่ทำงานของฉัน')}</strong>
               <span>
                 <i />
-                {t('Saved in this browser', 'บันทึกในเบราว์เซอร์นี้')}
+                {mongo ? 'MongoDB' : t('Saved in this browser', 'บันทึกในเบราว์เซอร์นี้')}
               </span>
             </div>
           </div>
@@ -1679,8 +1720,8 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
               ? t('Try another keyword or clear your filters.', 'ลองคำค้นอื่นหรือล้างตัวกรอง')
               : canLoadSuppliedPosts
                 ? t(
-                    'This browser has no posts yet. Add the supplied posts with their latest Viewers totals.',
-                    'เบราว์เซอร์นี้ยังไม่มีโพสต์ เพิ่มโพสต์ที่คุณให้มาพร้อมยอดผู้ชมล่าสุด',
+                    'This workspace has no posts yet. Add the supplied posts with their latest Viewers totals.',
+                    'พื้นที่ทำงานนี้ยังไม่มีโพสต์ เพิ่มโพสต์ที่คุณให้มาพร้อมยอดผู้ชมล่าสุด',
                   )
                 : t(
                     'Add a link to a post that is already live, or import existing records.',
@@ -1747,6 +1788,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
       </div>
     );
   }
+  if (startup) return <WorkspaceStartup {...startup} t={t} />;
   if (!data && view === 'posts')
     return (
       <div className={s.app}>
@@ -2083,6 +2125,19 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
               </button>
             </div>
           )}
+          {browserCopyDiffers && (
+            <div className={s.errorBanner} role="status">
+              {t(
+                'This browser has a different copy from the original MongoDB import. Download the browser copy in Settings to review it.',
+                'สำเนาในเบราว์เซอร์นี้ต่างจากข้อมูลที่นำเข้าใน MongoDB ครั้งแรก ดาวน์โหลดสำเนาในหน้าการตั้งค่าเพื่อตรวจสอบ',
+              )}
+              {view !== 'settings' && (
+                <button onClick={() => navigate('settings')}>
+                  {t('Open settings', 'เปิดการตั้งค่า')}
+                </button>
+              )}
+            </div>
+          )}
           {!['customers', 'posts', 'scripts'].includes(view) && (
             <div className={s.pageHeading}>
               <div>
@@ -2137,10 +2192,12 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
               </section>
               <div className={s.bottomNote}>
                 <ShieldCheck size={16} />
-                {t(
-                  'Your workspace stays in this browser. Export a backup to keep it safe.',
-                  'ข้อมูลเก็บอยู่ในเบราว์เซอร์นี้ ส่งออกไฟล์สำรองเพื่อเก็บรักษาข้อมูล',
-                )}
+                {mongo
+                  ? t('Your workspace is saved in MongoDB.', 'พื้นที่ทำงานบันทึกอยู่ใน MongoDB')
+                  : t(
+                      'Your workspace stays in this browser. Export a backup to keep it safe.',
+                      'ข้อมูลเก็บอยู่ในเบราว์เซอร์นี้ ส่งออกไฟล์สำรองเพื่อเก็บรักษาข้อมูล',
+                    )}
                 <button onClick={() => navigate('settings')}>
                   {t('Manage data', 'จัดการข้อมูล')}
                   <ArrowUpRight size={14} />
@@ -2494,6 +2551,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
           )}
           {view === 'settings' && (
             <SettingsPanel
+              mongo={mongo}
               data={data}
               revision={revision}
               companyId={companyId}

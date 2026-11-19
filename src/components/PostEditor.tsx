@@ -1292,7 +1292,7 @@ export default function PostEditor({
                   {deleting ? t('Deleting…', 'กำลังลบ…') : t('Delete post', 'ลบโพสต์')}
                 </button>
               ) : (
-                <span>{t('Stored in this browser', 'จัดเก็บในเบราว์เซอร์นี้')}</span>
+                <span>{t('Save to workspace', 'บันทึกในพื้นที่ทำงาน')}</span>
               )}
               <button
                 type="button"
