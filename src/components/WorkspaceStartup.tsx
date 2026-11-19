@@ -12,10 +12,12 @@ interface Source {
 
 export default function WorkspaceStartup({
   initialize,
+  openCache,
   error,
   t,
 }: {
   initialize?: (workspace: Workspace) => Promise<unknown>;
+  openCache?: () => void;
   error?: string;
   t: Translate;
 }) {
@@ -118,6 +120,11 @@ export default function WorkspaceStartup({
         </>
       )}
       {(issue || error) && <p role="alert">{issue || error}</p>}
+      {openCache && (
+        <button className={styles.primary} onClick={openCache}>
+          {t('Open last synced workspace · Read only', 'เปิดสำเนาที่ซิงก์ล่าสุด · อ่านอย่างเดียว')}
+        </button>
+      )}
       <button className={styles.secondary} disabled={busy} onClick={() => window.location.reload()}>
         {t('Reload', 'โหลดใหม่')}
       </button>

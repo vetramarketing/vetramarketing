@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useLayoutEffect, useMemo, useState } from 'react';
 import {
   CheckCircle2,
   FileText,
@@ -22,6 +22,7 @@ import { carrierOptions, statusOptions } from './order-ui';
 import s from './OrdersPanel.module.css';
 
 export interface OrdersProps {
+  readOnly?: boolean;
   data: Workspace;
   companyId: string;
   update: (next: Workspace) => Promise<boolean>;
@@ -29,13 +30,18 @@ export interface OrdersProps {
   notify: (message: string) => void;
 }
 
-export default function OrdersPanel(props: OrdersProps) {
-  const { data, companyId, t, update, notify } = props;
+export default function OrdersPanel({
+  onEditorOpenChange,
+  ...props
+}: OrdersProps & { onEditorOpenChange: (open: boolean) => void }) {
+  const { data, companyId, t, update, notify, readOnly } = props;
   const [query, setQuery] = useState('');
   const search = useDeferredValue(query.trim().toLocaleLowerCase());
   const [status, setStatus] = useState('all');
   const [carrier, setCarrier] = useState('all');
   const [editing, setEditing] = useState<Order | 'new' | null>(null);
+  const editorOpen = editing !== null;
+  useLayoutEffect(() => onEditorOpenChange(editorOpen), [editorOpen, onEditorOpenChange]);
   const settings = data.shippingSettings ?? defaultShippingSettings();
   const orders = useMemo(
     () =>
@@ -118,6 +124,7 @@ export default function OrdersPanel(props: OrdersProps) {
               <button
                 className={s.secondaryButton}
                 onClick={show}
+                disabled={readOnly}
                 aria-haspopup="dialog"
                 aria-expanded={open}
               >
@@ -127,7 +134,7 @@ export default function OrdersPanel(props: OrdersProps) {
           />
           <button
             className={s.primaryButton}
-            disabled={!data.companies.length}
+            disabled={readOnly || !data.companies.length}
             onClick={() => setEditing('new')}
           >
             <Plus size={19} />
@@ -283,7 +290,7 @@ export default function OrdersPanel(props: OrdersProps) {
             </p>
             <button
               className={s.primaryButton}
-              disabled={!orders.length && !data.companies.length}
+              disabled={!orders.length && (readOnly || !data.companies.length)}
               onClick={() =>
                 orders.length
                   ? (setQuery(''), setStatus('all'), setCarrier('all'))

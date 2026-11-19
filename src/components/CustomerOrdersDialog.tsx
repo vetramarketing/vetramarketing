@@ -11,6 +11,7 @@ import { orderErrorMessage, statusOptions } from './order-ui';
 import s from './CustomerOrdersDialog.module.css';
 
 type Props = {
+  readOnly?: boolean;
   customerId: string;
   totalUnits?: number;
   productId?: string;
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export default function CustomerOrdersDialog({
+  readOnly,
   customerId,
   totalUnits,
   productId,
@@ -188,83 +190,85 @@ export default function CustomerOrdersDialog({
                 : '–'}
           </strong>
         </div>
-        <form className={s.form} onSubmit={addOrder} aria-busy={busy}>
-          <label htmlFor={fieldId}>
-            <span className={s.sectionHeading}>{t('Quantity', 'จำนวน')}</span>
-            {product && (productId || availableProduct) ? (
-              <span className={s.product}>· {product.name}</span>
-            ) : (
-              !!customer?.productIds?.length && (
-                <span className={s.product}>· {t('No specific product', 'ไม่ระบุสินค้า')}</span>
-              )
-            )}
-          </label>
-          <div className={s.entry}>
-            <div className={s.stepper}>
-              <button
-                type="button"
-                className={s.step}
-                disabled={!canAdd || busy || parsed <= 1}
-                aria-label={t('Decrease quantity', 'ลดจำนวน')}
-                onClick={() =>
-                  setQuantity(String(Math.max(1, Math.min(MAX_ORDER_QUANTITY, parsed - 1))))
-                }
-              >
-                <Minus size={18} aria-hidden="true" />
-              </button>
-              <input
-                id={fieldId}
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]+"
-                required
-                autoComplete="off"
-                maxLength={7}
-                value={quantity}
-                disabled={!canAdd || busy}
-                onFocus={(event) => event.target.select()}
-                onChange={(event) => {
-                  setQuantity(event.target.value);
-                  setError('');
-                }}
-              />
-              <button
-                type="button"
-                className={s.step}
-                disabled={!canAdd || busy || parsed >= MAX_ORDER_QUANTITY}
-                aria-label={t('Increase quantity', 'เพิ่มจำนวน')}
-                onClick={() => setQuantity(String(Math.min(MAX_ORDER_QUANTITY, parsed + 1)))}
-              >
+        {!readOnly && (
+          <form className={s.form} onSubmit={addOrder} aria-busy={busy}>
+            <label htmlFor={fieldId}>
+              <span className={s.sectionHeading}>{t('Quantity', 'จำนวน')}</span>
+              {product && (productId || availableProduct) ? (
+                <span className={s.product}>· {product.name}</span>
+              ) : (
+                !!customer?.productIds?.length && (
+                  <span className={s.product}>· {t('No specific product', 'ไม่ระบุสินค้า')}</span>
+                )
+              )}
+            </label>
+            <div className={s.entry}>
+              <div className={s.stepper}>
+                <button
+                  type="button"
+                  className={s.step}
+                  disabled={!canAdd || busy || parsed <= 1}
+                  aria-label={t('Decrease quantity', 'ลดจำนวน')}
+                  onClick={() =>
+                    setQuantity(String(Math.max(1, Math.min(MAX_ORDER_QUANTITY, parsed - 1))))
+                  }
+                >
+                  <Minus size={18} aria-hidden="true" />
+                </button>
+                <input
+                  id={fieldId}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]+"
+                  required
+                  autoComplete="off"
+                  maxLength={7}
+                  value={quantity}
+                  disabled={!canAdd || busy}
+                  onFocus={(event) => event.target.select()}
+                  onChange={(event) => {
+                    setQuantity(event.target.value);
+                    setError('');
+                  }}
+                />
+                <button
+                  type="button"
+                  className={s.step}
+                  disabled={!canAdd || busy || parsed >= MAX_ORDER_QUANTITY}
+                  aria-label={t('Increase quantity', 'เพิ่มจำนวน')}
+                  onClick={() => setQuantity(String(Math.min(MAX_ORDER_QUANTITY, parsed + 1)))}
+                >
+                  <Plus size={18} aria-hidden="true" />
+                </button>
+              </div>
+              <button type="submit" className={s.submit} disabled={!canAdd || busy || !valid}>
                 <Plus size={18} aria-hidden="true" />
+                {busy ? t('Saving…', 'กำลังบันทึก…') : t('Add order', 'เพิ่มออเดอร์')}
               </button>
             </div>
-            <button type="submit" className={s.submit} disabled={!canAdd || busy || !valid}>
-              <Plus size={18} aria-hidden="true" />
-              {busy ? t('Saving…', 'กำลังบันทึก…') : t('Add order', 'เพิ่มออเดอร์')}
-            </button>
-          </div>
-          {!canAdd && (
-            <p className={s.error} role="status">
-              {t(
-                'This customer or product is unavailable for new orders.',
-                'ลูกค้าหรือสินค้านี้ไม่พร้อมสำหรับออเดอร์ใหม่',
-              )}
-            </p>
-          )}
-          {quantity && !valid && (
-            <p className={s.error} role="alert">
-              {t(
-                'Enter a whole quantity from 1 to 1,000,000.',
-                'กรอกจำนวนเต็มตั้งแต่ 1 ถึง 1,000,000',
-              )}
-            </p>
-          )}
-          {error && (
-            <p className={s.error} role="alert">
-              {error}
-            </p>
-          )}
-        </form>
+            {!canAdd && (
+              <p className={s.error} role="status">
+                {t(
+                  'This customer or product is unavailable for new orders.',
+                  'ลูกค้าหรือสินค้านี้ไม่พร้อมสำหรับออเดอร์ใหม่',
+                )}
+              </p>
+            )}
+            {quantity && !valid && (
+              <p className={s.error} role="alert">
+                {t(
+                  'Enter a whole quantity from 1 to 1,000,000.',
+                  'กรอกจำนวนเต็มตั้งแต่ 1 ถึง 1,000,000',
+                )}
+              </p>
+            )}
+            {error && (
+              <p className={s.error} role="alert">
+                {error}
+              </p>
+            )}
+          </form>
+        )}
         <section className={s.history}>
           <div className={s.historyHeading}>
             <h3 className={s.sectionHeading} ref={historyHeading} tabIndex={-1}>
@@ -317,7 +321,7 @@ export default function CustomerOrdersDialog({
                           ? unitsText(amount)
                           : t('Quantity not recorded', 'ยังไม่ได้บันทึกจำนวน')}
                       </span>
-                      {!order.shipment && (
+                      {!readOnly && !order.shipment && (
                         <button
                           type="button"
                           className={s.deleteOrder}

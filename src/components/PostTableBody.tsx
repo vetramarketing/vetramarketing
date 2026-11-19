@@ -22,6 +22,7 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
 const formatDate = (date: string) =>
   date ? formatCalendarDate(dateFormatter.format(new Date(date))) : '—';
 interface Props {
+  readOnly?: boolean;
   posts: Post[];
   data: Workspace;
   locale: Locale;
@@ -37,6 +38,7 @@ interface Props {
 }
 /** Reuse the row tree while the parent updates inputs or unrelated controls. */
 const PostTableBody = memo(function PostTableBody({
+  readOnly,
   posts,
   data,
   locale,
@@ -210,6 +212,7 @@ const PostTableBody = memo(function PostTableBody({
                     <button
                       className={s.postTitle}
                       title={t('Edit this post to add its link', 'แก้ไขโพสต์นี้เพื่อเพิ่มลิงก์')}
+                      disabled={readOnly}
                       onClick={() => onEdit(p)}
                     >
                       {titleContents}
@@ -231,6 +234,7 @@ const PostTableBody = memo(function PostTableBody({
                     <span className={s.postMetaActions}>
                       <button
                         className={`${s.iconButton} ${s.inlineEdit}`}
+                        disabled={readOnly}
                         type="button"
                         onClick={() => onEdit(p)}
                         aria-label={`${t('Edit', 'แก้ไข')} ${postAccessibleName}`}

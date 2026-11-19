@@ -1,23 +1,31 @@
 import { createHash } from 'node:crypto';
-import { Binary, MongoServerError, type Db } from 'mongodb';
+import { Binary, MongoServerError, type ClientSession, type Db } from 'mongodb';
 import { importCarrierLabelBytes, type CarrierLabelStore } from '../order-labels';
 import type { Workspace } from '../types';
 
 export const validLabelId = (id: string) => /^label-[a-f0-9]{64}$/.test(id);
 
+export class StoredLabelIntegrityError extends Error {}
+type StoredLabel = { _id: string; data: Binary; size: number };
+
+function verifiedBytes(file: StoredLabel) {
+  const bytes = file.data instanceof Binary ? file.data.value() : undefined;
+  if (
+    !bytes ||
+    bytes.length !== file.size ||
+    createHash('sha256').update(bytes).digest('hex') !== file._id.slice(6)
+  )
+    throw new StoredLabelIntegrityError('Stored carrier PDF failed verification.');
+  return bytes;
+}
+
 export function mongoLabelStore(db: Db): CarrierLabelStore {
-  const files = db.collection<{ _id: string; data: Binary; size: number }>('vetra_carrier_labels');
+  const files = db.collection<StoredLabel>('vetra_carrier_labels');
   async function read(id: string) {
     if (!validLabelId(id)) throw new Error('Invalid carrier label ID.');
     const file = await files.findOne({ _id: id });
     if (!file) return undefined;
-    const bytes = file.data.value();
-    if (
-      bytes.length !== file.size ||
-      createHash('sha256').update(bytes).digest('hex') !== id.slice(6)
-    )
-      throw new Error('Stored carrier PDF failed verification.');
-    return Uint8Array.from(bytes);
+    return Uint8Array.from(verifiedBytes(file));
   }
   return {
     read,
@@ -44,21 +52,36 @@ export async function storeUploadedLabel(db: Db, id: string, bytes: Uint8Array) 
   return true;
 }
 
-export async function assertStoredLabels(workspace: Workspace, db: Db) {
+export async function assertStoredLabels(
+  workspace: Workspace,
+  db: Db,
+  options: { verifyBytes?: boolean; session?: ClientSession } = {},
+) {
   const labels = new Map<string, number>();
   for (const order of workspace.orders ?? []) {
     if (order.label) {
       const { id, sha256, size } = order.label;
       if (id !== 'label-' + sha256 || (labels.has(id) && labels.get(id) !== size))
-        throw new Error('Inconsistent carrier PDF reference.');
+        throw new StoredLabelIntegrityError('Inconsistent carrier PDF reference.');
       labels.set(id, size);
     }
   }
   if (!labels.size) return;
-  const rows = await db
-    .collection<{ _id: string; size: number }>('vetra_carrier_labels')
-    .find({ _id: { $in: [...labels.keys()] } }, { projection: { size: 1 } })
-    .toArray();
-  if (rows.length !== labels.size || rows.some((row) => row.size !== labels.get(row._id)))
-    throw new Error('Upload every referenced carrier PDF before saving the workspace.');
+  const rows = db.collection<StoredLabel>('vetra_carrier_labels').find(
+    { _id: { $in: [...labels.keys()] } },
+    {
+      projection: { size: 1, ...(options.verifyBytes && { data: 1 }) },
+      session: options.session,
+    },
+  );
+  for await (const row of rows) {
+    if (row.size !== labels.get(row._id))
+      throw new StoredLabelIntegrityError('A referenced carrier PDF has an unexpected size.');
+    if (options.verifyBytes) verifiedBytes(row);
+    labels.delete(row._id);
+  }
+  if (labels.size)
+    throw new StoredLabelIntegrityError(
+      'Upload every referenced carrier PDF before saving the workspace.',
+    );
 }

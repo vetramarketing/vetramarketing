@@ -16,7 +16,7 @@ Company logos and product images are verified through Cloudinary before the corr
 
 ## Migration and edits
 
-A GET to `/api/workspace` reads a consistent transaction snapshot and checks its checksum. An empty database returns `WORKSPACE_NOT_INITIALIZED`. A missing URI allows browser-only operation. If a configured connection fails, the server returns an error.
+A GET to `/api/workspace` reads a consistent transaction snapshot and checks its checksum. An empty database returns `WORKSPACE_NOT_INITIALIZED`. A missing URI allows browser-only operation. If the local API identifies a temporary MongoDB outage, operators with a cached snapshot for the same configured database can choose **Open last synced workspace**. The app displays when it received the snapshot and opens it read-only. Settings can export the cached records and file references. Reload reconnects to MongoDB when service resumes.
 
 POST uses a serialized workspace, an operation ID and the expected revision. A null expected revision is create-only. An initial import preserves any existing post-identity collisions. Later edits reject newly introduced active duplicates. A stale revision returns HTTP 409. Unrelated records or orphaned rows in the project's entity collections prevent first initialization until reviewed.
 

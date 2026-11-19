@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Activity,
   memo,
   useCallback,
   useEffect,
@@ -13,7 +14,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, GripVertical, Package, Pencil, Plus, Search, X } from 'lucide-react';
+import { Check, GripVertical, ImagePlus, Package, Pencil, Plus, Search, X } from 'lucide-react';
 import {
   MAX_SORT_ORDER,
   nextSortOrder,
@@ -24,6 +25,12 @@ import {
 import { safeCatalogImageUrl, validateWorkspace } from '@/lib/data';
 import { entityEditIsCurrent } from '@/lib/entity-edit';
 import { retainCloudinaryImage } from '@/lib/cloudinary-media';
+import {
+  CatalogFileSubmission,
+  PreparationError,
+  prepareCatalogImage,
+  type PreparedCatalogImage,
+} from '@/lib/browser-catalog-image';
 import { productCompanyIdMap } from '@/lib/product-company';
 import type { Product, Company, Translate, Workspace } from '@/lib/types';
 import BusinessTypeManager from './BusinessTypeManager';
@@ -33,6 +40,10 @@ interface Props {
   kind: 'products' | 'companies';
   data: Workspace;
   companyId: string;
+  mediaUploadsEnabled?: boolean;
+  readOnly?: boolean;
+  active?: boolean;
+  onEditorOpenChange?: (open: boolean) => void;
   update: (next: Workspace) => Promise<boolean>;
   t: Translate;
   notify: (message: string) => void;
@@ -89,14 +100,38 @@ const CatalogImage = memo(function CatalogImage({
 });
 
 /** Both catalogs use the same validated, revision-checked workspace repository. */
-export default function CatalogPanel({ kind, data, update, t, notify, companyId }: Props) {
+export default function CatalogPanel({
+  kind,
+  data,
+  update,
+  t,
+  notify,
+  companyId,
+  mediaUploadsEnabled = false,
+  readOnly = false,
+  active = true,
+  onEditorOpenChange,
+}: Props) {
   const isProduct = kind === 'products';
   const [draft, setDraft] = useState<Draft | null>(null);
   const [baseline, setBaseline] = useState<Product | Company | null>(null);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [prepareFailed, setPrepareFailed] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selected, setSelected] = useState<
+    (PreparedCatalogImage & { name: string; sourceBytes: number; preview: string }) | null
+  >(null);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const selectionVersion = useRef(0);
+  const submission = useRef<CatalogFileSubmission | null>(null);
   const [typesOpen, setTypesOpen] = useState(false);
+  const editorOpen = Boolean(draft || typesOpen);
+  useLayoutEffect(() => {
+    onEditorOpenChange?.(editorOpen);
+  }, [editorOpen, onEditorOpenChange]);
   const [draggingCompanyId, setDraggingCompanyId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [orderMessage, setOrderMessage] = useState('');
@@ -110,7 +145,74 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
   const editorRef = useRef<HTMLFormElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
-  const closeEditor = () => {
+  function clearFile(committed = false) {
+    selectionVersion.current++;
+    if (!committed) void submission.current?.abandon();
+    submission.current = null;
+    setPreparing(false);
+    setPrepareFailed(false);
+    setSelected(null);
+    if (imageInput.current) imageInput.current.value = '';
+  }
+  useEffect(
+    () => () => {
+      selectionVersion.current++;
+      if (!busyRef.current) void submission.current?.abandon();
+    },
+    [],
+  );
+  useEffect(
+    () => () => {
+      if (selected) URL.revokeObjectURL(selected.preview);
+    },
+    [selected],
+  );
+  async function selectFile(file: File) {
+    if (!draft || readOnly || !mediaUploadsEnabled || busyRef.current) return;
+    clearFile();
+    setError('');
+    const version = selectionVersion.current;
+    setPreparing(true);
+    try {
+      const prepared = await prepareCatalogImage(file, kind);
+      if (version !== selectionVersion.current) return;
+      submission.current = new CatalogFileSubmission(kind, draft.id, prepared.file);
+      setSelected({
+        ...prepared,
+        name: file.name,
+        sourceBytes: file.size,
+        preview: URL.createObjectURL(prepared.file),
+      });
+    } catch (cause) {
+      if (version !== selectionVersion.current) return;
+      setPrepareFailed(true);
+      setError(
+        cause instanceof PreparationError && cause.reason === 'size'
+          ? t(
+              'The prepared image exceeds 5 MiB. Choose a smaller image.',
+              'รูปภาพหลังเตรียมไฟล์มีขนาดเกิน 5 MiB กรุณาเลือกรูปที่เล็กลง',
+            )
+          : cause instanceof PreparationError && cause.reason === 'input-size'
+            ? t(
+                'Choose an image up to 32 MiB and 50 megapixels.',
+                'กรุณาเลือกรูปขนาดไม่เกิน 32 MiB และความละเอียดไม่เกิน 50 ล้านพิกเซล',
+              )
+            : cause instanceof PreparationError && cause.reason === 'animated'
+              ? t(
+                  'Choose a still image. Animated files are unsupported.',
+                  'กรุณาเลือกภาพนิ่ง ระบบไม่รองรับไฟล์ภาพเคลื่อนไหว',
+                )
+              : t(
+                  'Could not read this image. Choose a JPEG, PNG, or WebP file.',
+                  'ไม่สามารถอ่านรูปภาพนี้ได้ กรุณาเลือกไฟล์ JPEG, PNG หรือ WebP',
+                ),
+      );
+    } finally {
+      if (version === selectionVersion.current) setPreparing(false);
+    }
+  }
+  const closeEditor = (committed = false) => {
+    clearFile(committed);
     setDraft(null);
     setError('');
     requestAnimationFrame(() => {
@@ -164,7 +266,7 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
     return searchableItems.filter(({ text }) => text.includes(needle)).map(({ item }) => item);
   }, [searchableItems, query]);
   const canReorderCompanies =
-    !isProduct && data.companies.length > 1 && !draft && !busy && !query.trim();
+    !readOnly && !isProduct && data.companies.length > 1 && !draft && !busy && !query.trim();
   const clearDrag = useCallback(() => {
     const session = dragSessionRef.current;
     dragSessionRef.current = null;
@@ -292,7 +394,8 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
     autoScrollFrameRef.current = requestAnimationFrame(autoScroll);
   };
   const saveCompanyOrder = async (sourceId: string, targetId: string) => {
-    if (busyRef.current || draft || query.trim() || isProduct || sourceId === targetId) return;
+    if (readOnly || busyRef.current || draft || query.trim() || isProduct || sourceId === targetId)
+      return;
     const ordered = sortCatalog(data.companies);
     const targetIndex = ordered.findIndex((store) => store.id === targetId);
     const source = ordered.find((store) => store.id === sourceId);
@@ -406,7 +509,7 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
     if (target) void saveCompanyOrder(id, target.id);
   };
   const begin = (item?: Product | Company) => {
-    if (busyRef.current || dragSessionRef.current) return;
+    if (readOnly || busyRef.current || dragSessionRef.current) return;
     previousFocus.current = document.activeElement as HTMLElement | null;
     setBaseline(item ? { ...item } : null);
     setDraft({
@@ -438,7 +541,8 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
   };
 
   const commit = async (deleting = false) => {
-    if (!draft || busyRef.current) return;
+    if (readOnly || !draft || busyRef.current || (!deleting && (preparing || prepareFailed)))
+      return;
     const current = (isProduct ? data.products : data.companies).find(
       (item) => item.id === draft.id,
     );
@@ -452,7 +556,8 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
       return;
     }
     const name = draft.name.trim();
-    const imageUrl = draft.imageUrl.trim();
+    const file = mediaUploadsEnabled && !deleting ? submission.current : null;
+    const imageUrl = file ? '' : draft.imageUrl.trim();
     const order = Number(draft.sortOrder);
     if (
       !deleting &&
@@ -527,7 +632,34 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
         };
       }
       validateWorkspace(next);
+      if (file) {
+        setUploading(!file.uploaded);
+        try {
+          const media = await file.stage();
+          if (isProduct)
+            next.products = next.products.map((item) =>
+              item.id === draft.id ? { ...item, ...media } : item,
+            );
+          else
+            next.companies = next.companies.map((item) =>
+              item.id === draft.id
+                ? { ...item, logoImageUrl: media.imageUrl, logoAsset: media.imageAsset }
+                : item,
+            );
+        } catch {
+          setError(
+            t(
+              'Image upload failed. Your prepared image and edits are ready to retry.',
+              'อัปโหลดรูปภาพไม่สำเร็จ ระบบเก็บรูปที่เตรียมไว้และข้อมูลที่แก้ไขแล้ว กดบันทึกเพื่อลองอีกครั้ง',
+            ),
+          );
+          return;
+        } finally {
+          setUploading(false);
+        }
+      }
       if (!(await update(next))) {
+        await file?.saveFailed();
         setError(
           t(
             'Could not save. Your edits are still here. Try again after checking the workspace message.',
@@ -537,7 +669,7 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
         return;
       }
       setQuery('');
-      closeEditor();
+      closeEditor(!deleting);
       notify(
         deleting
           ? t(
@@ -549,6 +681,7 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
             : t('Company saved.', 'บันทึกบริษัทแล้ว'),
       );
     } catch {
+      await file?.saveFailed();
       setError(
         t(
           'Could not save this item. Check the fields and try again. Your edits are still here.',
@@ -565,45 +698,49 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
     void commit();
   };
 
-  return (
+  const panel = (
     <div className={styles.stack}>
       <div className={styles.toolbar}>
         <div>
           <h2>
             {isProduct ? t('Your products', 'สินค้าของคุณ') : t('Your companies', 'บริษัทของคุณ')}
           </h2>
-          <p id={isProduct ? undefined : 'company-order-instructions'}>
-            {isProduct
-              ? t(
-                  'Link each product to the companies that offer it.',
-                  'เชื่อมสินค้าแต่ละรายการกับบริษัทที่จำหน่าย',
-                )
-              : t(
-                  'Drag the handle to reorder companies, or focus it and use arrow keys.',
-                  'ลากปุ่มจับเพื่อจัดลำดับบริษัท หรือใช้ปุ่มลูกศรเมื่อโฟกัสอยู่',
-                )}
-          </p>
-        </div>
-        <div className={styles.catalogActions}>
-          {!isProduct && (
-            <button
-              className={styles.secondaryButton}
-              disabled={busy}
-              onClick={() => setTypesOpen(true)}
-            >
-              {t('Business types', 'ประเภทธุรกิจ')}
-            </button>
+          {!readOnly && (
+            <p id={isProduct ? undefined : 'company-order-instructions'}>
+              {isProduct
+                ? t(
+                    'Link each product to the companies that offer it.',
+                    'เชื่อมสินค้าแต่ละรายการกับบริษัทที่จำหน่าย',
+                  )
+                : t(
+                    'Drag the handle to reorder companies, or focus it and use arrow keys.',
+                    'ลากปุ่มจับเพื่อจัดลำดับบริษัท หรือใช้ปุ่มลูกศรเมื่อโฟกัสอยู่',
+                  )}
+            </p>
           )}
-          <button
-            ref={addButtonRef}
-            className={styles.primaryButton}
-            disabled={busy || !!draft}
-            onClick={() => begin()}
-          >
-            <Plus size={19} />
-            {isProduct ? t('Add product', 'เพิ่มสินค้า') : t('Add company', 'เพิ่มบริษัท')}
-          </button>
         </div>
+        {!readOnly && (
+          <div className={styles.catalogActions}>
+            {!isProduct && (
+              <button
+                className={styles.secondaryButton}
+                disabled={busy}
+                onClick={() => setTypesOpen(true)}
+              >
+                {t('Business types', 'ประเภทธุรกิจ')}
+              </button>
+            )}
+            <button
+              ref={addButtonRef}
+              className={styles.primaryButton}
+              disabled={busy || !!draft}
+              onClick={() => begin()}
+            >
+              <Plus size={19} />
+              {isProduct ? t('Add product', 'เพิ่มสินค้า') : t('Add company', 'เพิ่มบริษัท')}
+            </button>
+          </div>
+        )}
       </div>
       <label className={styles.search}>
         <Search size={19} aria-hidden="true" />
@@ -621,7 +758,7 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
         />
         <span>{visible.length}</span>
       </label>
-      {!isProduct && query.trim() && (
+      {!readOnly && !isProduct && query.trim() && (
         <p className={styles.reorderHint}>
           {t('Clear search to reorder companies.', 'ล้างคำค้นหาก่อนจัดลำดับบริษัท')}
         </p>
@@ -636,7 +773,7 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
           {orderMessage}
         </span>
       )}
-      {draft && (
+      {!readOnly && draft && (
         <form
           ref={editorRef}
           className={`${styles.editor} ${styles.catalogEditor}`}
@@ -658,7 +795,7 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
               className={styles.iconButton}
               disabled={busy}
               aria-label={t('Close editor', 'ปิดการแก้ไข')}
-              onClick={closeEditor}
+              onClick={() => closeEditor()}
             >
               <X size={20} />
             </button>
@@ -740,9 +877,84 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
                 />
               </label>
             )}
+            {mediaUploadsEnabled && (
+              <div className={`${styles.filePicker} ${styles.fullWidth}`}>
+                <div className={styles.filePickerActions}>
+                  <input
+                    ref={imageInput}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    aria-label={t('Choose image file', 'เลือกไฟล์รูปภาพ')}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void selectFile(file);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => imageInput.current?.click()}
+                  >
+                    <ImagePlus size={18} aria-hidden="true" />
+                    {selected
+                      ? t('Choose another image', 'เลือกรูปภาพอื่น')
+                      : t('Choose image', 'เลือกรูปภาพ')}
+                  </button>
+                  {(selected || prepareFailed || preparing) && (
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => {
+                        clearFile();
+                        setError('');
+                      }}
+                    >
+                      {t('Clear selection', 'ล้างการเลือกรูป')}
+                    </button>
+                  )}
+                </div>
+                {selected && (
+                  <div className={styles.filePreview}>
+                    <img
+                      src={selected.preview}
+                      alt={t('Selected image preview', 'ตัวอย่างรูปที่เลือก')}
+                    />
+                    <div>
+                      <strong>{selected.name}</strong>
+                      <small>
+                        {selected.width} × {selected.height} px ·{' '}
+                        {selected.file.type.split('/')[1].toUpperCase()}
+                      </small>
+                      <small>
+                        {t('Original', 'ต้นฉบับ')}{' '}
+                        {Math.max(1, Math.ceil(selected.sourceBytes / 1024)).toLocaleString()} KiB ·{' '}
+                        {t('Prepared', 'หลังเตรียมไฟล์')}{' '}
+                        {Math.max(1, Math.ceil(selected.file.size / 1024)).toLocaleString()} KiB
+                      </small>
+                    </div>
+                  </div>
+                )}
+                <small role="status">
+                  {preparing
+                    ? t('Preparing image…', 'กำลังเตรียมรูปภาพ…')
+                    : uploading
+                      ? t('Uploading and verifying image…', 'กำลังอัปโหลดและตรวจสอบรูปภาพ…')
+                      : selected
+                        ? busy
+                          ? t('Saving record…', 'กำลังบันทึกรายการ…')
+                          : t('Ready to save.', 'พร้อมบันทึก')
+                        : t(
+                            'Still JPEG, PNG or WebP up to 32 MiB and 50 megapixels. Upload begins when you save.',
+                            'ภาพนิ่ง JPEG, PNG หรือ WebP ขนาดไม่เกิน 32 MiB และ 50 ล้านพิกเซล ระบบจะอัปโหลดเมื่อกดบันทึก',
+                          )}
+                </small>
+              </div>
+            )}
             <label>
               {isProduct ? t('Image URL', 'ลิงก์รูปสินค้า') : t('Logo image URL', 'ลิงก์รูปโลโก้')}
               <input
+                disabled={Boolean(selected || preparing || prepareFailed)}
                 type="text"
                 inputMode="url"
                 maxLength={2048}
@@ -793,11 +1005,15 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
               type="button"
               className={styles.secondaryButton}
               disabled={busy}
-              onClick={closeEditor}
+              onClick={() => closeEditor()}
             >
               {t('Cancel', 'ยกเลิก')}
             </button>
-            <button type="submit" className={styles.primaryButton} disabled={busy}>
+            <button
+              type="submit"
+              className={styles.primaryButton}
+              disabled={busy || preparing || prepareFailed}
+            >
               <Check size={18} />
               {busy ? t('Saving…', 'กำลังบันทึก…') : t('Save', 'บันทึก')}
             </button>
@@ -823,7 +1039,7 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
                     {index + 1}
                   </span>
                 )}
-                {!isProduct && (
+                {!readOnly && !isProduct && (
                   <button
                     type="button"
                     className={`${styles.iconButton} ${styles.companyDragHandle}`}
@@ -879,15 +1095,17 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
                   {t('Owner', 'เจ้าของบริษัท')}: {item.ownerName}
                 </p>
               )}
-              <button
-                className={`${styles.companyEdit} ${styles.catalogEdit}`}
-                disabled={busy || !!draft}
-                aria-label={`${t('Edit', 'แก้ไข')} ${item.name}`}
-                onClick={() => begin(item)}
-              >
-                {isProduct ? t('Edit product', 'แก้ไขสินค้า') : t('Edit company', 'แก้ไขบริษัท')}
-                <Pencil size={17} />
-              </button>
+              {!readOnly && (
+                <button
+                  className={`${styles.companyEdit} ${styles.catalogEdit}`}
+                  disabled={busy || !!draft}
+                  aria-label={`${t('Edit', 'แก้ไข')} ${item.name}`}
+                  onClick={() => begin(item)}
+                >
+                  {isProduct ? t('Edit product', 'แก้ไขสินค้า') : t('Edit company', 'แก้ไขบริษัท')}
+                  <Pencil size={17} />
+                </button>
+              )}
             </article>
           ))}
         </div>
@@ -902,27 +1120,30 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
               : isProduct && companyId !== 'all'
                 ? t('No products for this company', 'ยังไม่มีสินค้าสำหรับบริษัทนี้')
                 : isProduct
-                  ? t('Add your first product', 'เพิ่มสินค้ารายการแรก')
-                  : t('Add your first company', 'เพิ่มบริษัทแรก')}
+                  ? t('No products yet', 'ยังไม่มีสินค้า')
+                  : t('No companies yet', 'ยังไม่มีบริษัท')}
           </h3>
-          <p>
-            {query
-              ? isProduct
-                ? t('Try a different name or company.', 'ลองค้นด้วยชื่อหรือบริษัทอื่น')
-                : t('Try a different name or owner.', 'ลองค้นด้วยชื่อบริษัทหรือเจ้าของอื่น')
-              : isProduct
-                ? t(
-                    'Add a product and choose the companies that offer it.',
-                    'เพิ่มสินค้าและเลือกบริษัทที่จำหน่าย',
-                  )
-                : t(
-                    'Add a company to organize your catalog.',
-                    'เพิ่มบริษัทเพื่อจัดการรายการสินค้า',
-                  )}
-          </p>
+          {(!readOnly || query) && (
+            <p>
+              {query
+                ? isProduct
+                  ? t('Try a different name or company.', 'ลองค้นด้วยชื่อหรือบริษัทอื่น')
+                  : t('Try a different name or owner.', 'ลองค้นด้วยชื่อบริษัทหรือเจ้าของอื่น')
+                : isProduct
+                  ? t(
+                      'Add a product and choose the companies that offer it.',
+                      'เพิ่มสินค้าและเลือกบริษัทที่จำหน่าย',
+                    )
+                  : t(
+                      'Add a company to organize your catalog.',
+                      'เพิ่มบริษัทเพื่อจัดการรายการสินค้า',
+                    )}
+            </p>
+          )}
         </div>
       )}
-      {draggingCompanyId &&
+      {active &&
+        draggingCompanyId &&
         dragSessionRef.current &&
         createPortal(
           <div ref={dragGhostRef} className={styles.companyDragGhost} aria-hidden="true">
@@ -931,7 +1152,7 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
           </div>,
           document.body,
         )}
-      {typesOpen && (
+      {!readOnly && typesOpen && (
         <BusinessTypeManager
           data={data}
           update={update}
@@ -942,4 +1163,5 @@ export default function CatalogPanel({ kind, data, update, t, notify, companyId 
       )}
     </div>
   );
+  return <Activity mode={active ? 'visible' : 'hidden'}>{panel}</Activity>;
 }

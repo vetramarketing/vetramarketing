@@ -47,7 +47,7 @@ interface QuickSearchProps {
   onOpenPost: (post: Post) => void;
   onOpenCustomer: (customer: Customer) => void;
   onSelectCompany: (id: string) => void;
-  onCreatePost: () => void;
+  onCreatePost?: () => void;
 }
 
 interface SearchResult {
@@ -224,20 +224,18 @@ export default function QuickSearch({
       values.join(' ').toLocaleLowerCase(locale).includes(normalized);
     const dateLabel = (value: string) =>
       value && Number.isFinite(Date.parse(value)) ? formatCalendarDate(reportingDate(value)) : '';
-    const quickActions: SearchResult[] = matches(
-      'Add existing published post track',
-      'เพิ่มโพสต์ เผยแพร่แล้ว ติดตาม',
-    )
-      ? [
-          {
-            key: 'create-post',
-            label: t('Add post', 'เพิ่มโพสต์'),
-            detail: t('Track a post that is already live', 'ติดตามโพสต์ที่เผยแพร่แล้ว'),
-            icon: Plus,
-            action: onCreatePost,
-          },
-        ]
-      : [];
+    const quickActions: SearchResult[] =
+      onCreatePost && matches('Add existing published post track', 'เพิ่มโพสต์ เผยแพร่แล้ว ติดตาม')
+        ? [
+            {
+              key: 'create-post',
+              label: t('Add post', 'เพิ่มโพสต์'),
+              detail: t('Track a post that is already live', 'ติดตามโพสต์ที่เผยแพร่แล้ว'),
+              icon: Plus,
+              action: onCreatePost,
+            },
+          ]
+        : [];
     const pageResults: SearchResult[] = destinations
       .filter((item) => matches(item.en, item.th, item.keywords))
       .map((item) => ({

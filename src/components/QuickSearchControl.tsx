@@ -20,7 +20,7 @@ type Props = {
   onOpenPost: (post: Post) => void;
   onOpenCustomer: (customer: Customer) => void;
   onSelectCompany: (id: string) => void;
-  onCreatePost: () => void;
+  onCreatePost?: () => void;
 };
 
 const QuickSearchControl = forwardRef<QuickSearchControlHandle, Props>(function QuickSearchControl(

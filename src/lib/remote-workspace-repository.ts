@@ -12,6 +12,10 @@ import {
 import { deserializeWorkspace, serializeWorkspace } from './workspace-storage';
 
 export const REMOTE_CACHE_PREFIX = 'vetra-marketing.remote-cache.v1';
+export interface CachedWorkspace extends WorkspaceSnapshot {
+  /** Older cached snapshots predate timestamp recording. */
+  syncedAt: string | null;
+}
 
 /** The API implementation supplies authorization and database-backed revisions. */
 export type RemoteWorkspaceSource = Pick<
@@ -32,6 +36,54 @@ function scopePart(value: string): string {
   if (!trimmed || trimmed.length > 200) throw new Error('A signed-in cache scope is required.');
   // Length prefixes prevent collisions when IDs themselves contain the key separator.
   return `${trimmed.length}-${encodeURIComponent(trimmed)}`;
+}
+
+function scopedKey(scope: RemoteWorkspaceOptions['cacheScope']) {
+  return `${REMOTE_CACHE_PREFIX}.${scopePart(scope.userId)}.${scopePart(scope.workspaceId)}`;
+}
+
+export function readScopedWorkspaceCache(
+  scope: RemoteWorkspaceOptions['cacheScope'],
+  storage: WorkspaceStorage = window.localStorage,
+): CachedWorkspace | null {
+  const raw = storage.getItem(scopedKey(scope));
+  if (!raw) return null;
+  try {
+    const record = JSON.parse(raw);
+    if (!record || typeof record.revision !== 'string' || !record.revision.trim())
+      throw new Error('Invalid cache revision.');
+    const syncedAt = record.syncedAt ?? null;
+    if (
+      syncedAt !== null &&
+      (typeof syncedAt !== 'string' || new Date(syncedAt).toISOString() !== syncedAt)
+    )
+      throw new Error('Invalid cache timestamp.');
+    return {
+      workspace: deserializeWorkspace(record.workspace),
+      revision: record.revision,
+      syncedAt,
+    };
+  } catch (error) {
+    throw new WorkspaceUnreadableError(error);
+  }
+}
+
+/** A cached view has no write transport or migration/recovery operations. */
+export function readOnlyWorkspaceRepository(snapshot: CachedWorkspace): WorkspaceRepository {
+  const unavailable = async () => {
+    throw new Error('Reconnect to MongoDB to save changes.');
+  };
+  return {
+    load: async () => structuredClone(snapshot),
+    commit: unavailable,
+    recover: unavailable,
+    subscribe: () => () => {},
+    readPreservedRaw: () => null,
+    listOlderBackups: () => [],
+    readOlderBackup: () => null,
+    readLocale: () => new LocalWorkspaceRepository().readLocale(),
+    writeLocale: () => {},
+  };
 }
 
 function validatedSnapshot(snapshot: WorkspaceSnapshot): WorkspaceSnapshot {
@@ -58,12 +110,14 @@ export class RemoteWorkspaceRepository implements WorkspaceRepository {
   private readonly storageOverride?: WorkspaceStorage;
   private readonly onCacheError?: (error: WorkspaceStorageError) => void;
 
+  private readonly scope: RemoteWorkspaceOptions['cacheScope'];
   constructor({ remote, cacheScope, storage, eventSource, onCacheError }: RemoteWorkspaceOptions) {
     this.remote = remote;
     this.storageOverride = storage;
     this.local = new LocalWorkspaceRepository(storage, eventSource);
     this.onCacheError = onCacheError;
-    this.cacheKey = `${REMOTE_CACHE_PREFIX}.${scopePart(cacheScope.userId)}.${scopePart(cacheScope.workspaceId)}`;
+    this.scope = cacheScope;
+    this.cacheKey = scopedKey(cacheScope);
   }
 
   private get storage(): WorkspaceStorage {
@@ -77,7 +131,11 @@ export class RemoteWorkspaceRepository implements WorkspaceRepository {
     try {
       this.storage.setItem(
         this.cacheKey,
-        JSON.stringify({ revision: safe.revision, workspace: serializeWorkspace(safe.workspace) }),
+        JSON.stringify({
+          revision: safe.revision,
+          syncedAt: new Date().toISOString(),
+          workspace: serializeWorkspace(safe.workspace),
+        }),
       );
     } catch (cause) {
       // The database write may already have succeeded. Cache failure cannot turn it
@@ -92,25 +150,8 @@ export class RemoteWorkspaceRepository implements WorkspaceRepository {
   }
 
   /** Only an explicit read-only recovery flow should display this cached copy. */
-  readCachedSnapshot(): WorkspaceSnapshot | null {
-    let raw: string | null;
-    try {
-      raw = this.storage.getItem(this.cacheKey);
-    } catch (cause) {
-      throw new WorkspaceStorageError(cause);
-    }
-    if (raw === null) return null;
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') throw new Error('Invalid cached workspace.');
-      const record = parsed as Record<string, unknown>;
-      return validatedSnapshot({
-        revision: record.revision as string,
-        workspace: deserializeWorkspace(record.workspace),
-      });
-    } catch (cause) {
-      throw new WorkspaceUnreadableError(cause);
-    }
+  readCachedSnapshot(): CachedWorkspace | null {
+    return readScopedWorkspaceCache(this.scope, this.storage);
   }
 
   async load(): Promise<WorkspaceSnapshot> {

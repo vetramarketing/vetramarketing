@@ -39,6 +39,7 @@ import list from './WorkspaceList.module.css';
 import s from './ScriptsPanel.module.css';
 
 interface Props {
+  readOnly?: boolean;
   data: Workspace;
   update: (next: Workspace) => Promise<boolean>;
   t: Translate;
@@ -67,14 +68,23 @@ const sortOptions = [
   { value: 'title' as const, en: 'Title A–Z', th: 'ชื่อ ก–ฮ' },
 ];
 
-export default function ScriptsPanel({ data, update, t, notify, onEdit, onEditCode }: Props) {
+export default function ScriptsPanel({
+  data,
+  update,
+  t,
+  notify,
+  onEdit,
+  onEditCode,
+  readOnly,
+}: Props) {
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const searchPending = query !== deferredQuery;
   const [platform, setPlatform] = useState<ScriptPlatform | 'all'>('all');
   const [sort, setSort] = useState<'updated' | 'title'>('updated');
   const [page, setPage] = useState(0);
-  const [busy, setBusy] = useState(false);
+  const [saving, setBusy] = useState(false);
+  const busy = saving || !!readOnly;
   const busyRef = useRef(false);
   const [copyingId, setCopyingId] = useState<string | null>(null);
   const copyingRef = useRef(false);
@@ -439,17 +449,25 @@ export default function ScriptsPanel({ data, update, t, notify, onEdit, onEditCo
                           <PlatformIcon size={15} aria-hidden="true" />
                           {platformNames[script.platform]}
                         </span>
-                        <button
-                          type="button"
-                          className={s.titleButton}
-                          aria-haspopup="dialog"
-                          aria-label={`${t('Open script', 'เปิดสคริปต์')} — ${script.title}`}
-                          title={script.title}
-                          disabled={busy}
-                          onClick={() => onEdit(structuredClone(script), false)}
-                        >
-                          <span>{script.title}</span>
-                        </button>
+                        {readOnly ? (
+                          <details>
+                            <summary>{script.title}</summary>
+                            {script.description && <p>{script.description}</p>}
+                            <pre className={s.readOnlyCode}>{script.code}</pre>
+                          </details>
+                        ) : (
+                          <button
+                            type="button"
+                            className={s.titleButton}
+                            aria-haspopup="dialog"
+                            aria-label={`${t('Open script', 'เปิดสคริปต์')} — ${script.title}`}
+                            title={script.title}
+                            disabled={busy}
+                            onClick={() => onEdit(structuredClone(script), false)}
+                          >
+                            <span>{script.title}</span>
+                          </button>
+                        )}
                       </div>
                       <div className={s.metadata}>
                         <span>
@@ -543,7 +561,7 @@ export default function ScriptsPanel({ data, update, t, notify, onEdit, onEditCo
                 type="button"
                 className={filtersActive ? list.action : list.primaryAction}
                 aria-haspopup={filtersActive ? undefined : 'dialog'}
-                disabled={busy}
+                disabled={saving || (readOnly && !filtersActive)}
                 onClick={filtersActive ? resetFilters : openNew}
               >
                 {filtersActive ? (

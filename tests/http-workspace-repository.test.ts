@@ -83,6 +83,14 @@ test('a lost acknowledgement resends exactly the same operation and revision', a
   assert.equal(writes[0], writes[1]);
   assert.equal(JSON.parse(writes[0]).databaseScope, scope);
   assert.equal(JSON.parse(writes[0]).expectedRevision, 'first');
+  assert.equal(JSON.parse(writes[0]).verifyLabelBytes, undefined);
+  await store.commit({
+    workspace: result.workspace,
+    expectedRevision: result.revision,
+    operationId: 'restore',
+    verifyLabelBytes: true,
+  });
+  assert.equal(JSON.parse(writes[2]).verifyLabelBytes, true);
 });
 
 test('first import verifies the source fingerprint against a new read from MongoDB', async (t) => {
@@ -112,4 +120,82 @@ test('first import verifies the source fingerprint against a new read from Mongo
   assert.ok(initialize);
   assert.equal((await initialize(workspace)).revision, 'imported');
   assert.equal(phase, 3);
+});
+
+test('an authorized scoped outage offers the last confirmed snapshot with no writes or migration', async (t) => {
+  const values = new Map<string, string>([[WORKSPACE_KEY, 'unrelated browser source']]);
+  const localStorage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      values.set(key, value);
+    },
+  };
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: { localStorage } });
+  t.after(() => {
+    Reflect.deleteProperty(globalThis, 'window');
+  });
+  const db = 'a'.repeat(32);
+  const outage = (databaseScope: string, status = 503) =>
+    Response.json({ databaseScope, code: 'WORKSPACE_SERVICE_UNAVAILABLE' }, { status });
+  const transport = t.mock.method(globalThis, 'fetch', async () =>
+    Response.json({
+      configured: true,
+      workspace: encoded,
+      databaseScope: db,
+      revision: 'confirmed',
+    }),
+  );
+  const availability: Array<string | null> = [];
+  const live = await connectWorkspace(
+    () => {},
+    (cached) => availability.push(cached?.revision ?? null),
+  );
+  await live.store.load();
+  transport.mock.mockImplementation(async () => outage(db));
+  await assert.rejects(live.store.load());
+  assert.equal(availability.at(-1), 'confirmed');
+  transport.mock.mockImplementation(async () =>
+    Response.json({
+      configured: true,
+      workspace: encoded,
+      databaseScope: db,
+      revision: 'confirmed',
+    }),
+  );
+  await live.store.load();
+  assert.equal(availability.at(-1), null);
+  const lastConfirmed = new Map(values);
+  transport.mock.mockImplementation(async () => outage(db));
+  const recovery = await connectWorkspace(() => {});
+  assert.equal(recovery.mode, 'cached');
+  assert.equal(recovery.initialize, null);
+  assert.equal(recovery.cached.revision, 'confirmed');
+  assert.ok(recovery.cached.syncedAt && Number.isFinite(Date.parse(recovery.cached.syncedAt)));
+  const before = transport.mock.callCount();
+  const cached = await recovery.store.load();
+  await assert.rejects(
+    recovery.store.commit({ ...cached, expectedRevision: cached.revision, operationId: 'offline' }),
+    /Reconnect/,
+  );
+  await assert.rejects(recovery.store.recover(cached.workspace), /Reconnect/);
+  assert.deepEqual(values, lastConfirmed);
+  assert.equal(transport.mock.callCount(), before);
+
+  transport.mock.mockImplementation(async () => outage('b'.repeat(32)));
+  await assert.rejects(connectWorkspace(() => {}));
+  transport.mock.mockImplementation(async () => outage(db, 403));
+  await assert.rejects(connectWorkspace(() => {}));
+  transport.mock.mockImplementation(async () => {
+    throw new TypeError('network offline');
+  });
+  await assert.rejects(connectWorkspace(() => {})); // No authorized scope for a fresh session.
+
+  const key = [...values.keys()].find((key) => key !== WORKSPACE_KEY)!;
+  const old = JSON.parse(values.get(key)!);
+  delete old.syncedAt;
+  values.set(key, JSON.stringify(old));
+  transport.mock.mockImplementation(async () => outage(db));
+  assert.equal((await connectWorkspace(() => {})).cached?.syncedAt, null);
+  values.set(key, '{');
+  await assert.rejects(connectWorkspace(() => {}));
 });

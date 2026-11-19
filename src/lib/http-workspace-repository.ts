@@ -7,7 +7,12 @@ import {
   type WorkspaceSnapshot,
   type WorkspaceStorage,
 } from './workspace-repository';
-import { RemoteWorkspaceRepository } from './remote-workspace-repository';
+import {
+  readOnlyWorkspaceRepository,
+  readScopedWorkspaceCache,
+  RemoteWorkspaceRepository,
+  type CachedWorkspace,
+} from './remote-workspace-repository';
 import {
   deserializeWorkspace,
   serializeWorkspace,
@@ -17,6 +22,30 @@ import {
 import { uploadWorkspaceLabels } from './order-labels';
 
 const endpoint = '/api/workspace';
+
+class WorkspaceOutage extends Error {
+  constructor(readonly scope: string) {
+    super('MongoDB is currently unavailable.');
+  }
+}
+
+class WorkspaceNetworkError extends Error {}
+
+async function workspaceRequest(options: RequestInit) {
+  try {
+    return await fetch(endpoint, options);
+  } catch (cause) {
+    throw new WorkspaceNetworkError('Could not reach the workspace server.', { cause });
+  }
+}
+
+function cachedCopy(scope: string): CachedWorkspace | null {
+  try {
+    return readScopedWorkspaceCache({ userId: 'local-operator', workspaceId: scope });
+  } catch {
+    return null;
+  }
+}
 
 export function readBrowserMigrationSource(storage: WorkspaceStorage = window.localStorage) {
   for (const { key } of [{ key: WORKSPACE_KEY }, ...WORKSPACE_BACKUPS]) {
@@ -50,6 +79,13 @@ export async function browserSourceNeedsReview(digest?: string) {
 
 async function readResponse(response: Response): Promise<WorkspaceState> {
   const body = await response.json();
+  if (
+    response.status === 503 &&
+    body.code === 'WORKSPACE_SERVICE_UNAVAILABLE' &&
+    typeof body.databaseScope === 'string' &&
+    /^[a-f0-9]{32}$/.test(body.databaseScope)
+  )
+    throw new WorkspaceOutage(body.databaseScope);
   if (response.ok && body.configured === false) return { kind: 'local' };
   if (response.status === 409) {
     if (body.code === 'WORKSPACE_IDENTITY_CONFLICT' && Array.isArray(body.postIds))
@@ -82,11 +118,30 @@ async function readResponse(response: Response): Promise<WorkspaceState> {
 }
 
 async function getState() {
-  return readResponse(await fetch(endpoint, { cache: 'no-store' }));
+  return readResponse(await workspaceRequest({ cache: 'no-store' }));
 }
 
-export async function connectWorkspace(onCacheError: () => void) {
-  const initial = await getState();
+export async function connectWorkspace(
+  onCacheError: () => void,
+  onAvailabilityChange?: (snapshot: CachedWorkspace | null) => void,
+) {
+  let initial: WorkspaceState;
+  try {
+    initial = await getState();
+  } catch (error) {
+    if (error instanceof WorkspaceOutage) {
+      const cached = cachedCopy(error.scope);
+      if (cached)
+        return {
+          store: readOnlyWorkspaceRepository(cached),
+          mode: 'cached' as const,
+          cached,
+          initialize: null,
+          migrationSourceDigest: undefined,
+        };
+    }
+    throw error;
+  }
   if (initial.kind === 'local')
     return {
       store: new LocalWorkspaceRepository(),
@@ -96,11 +151,28 @@ export async function connectWorkspace(onCacheError: () => void) {
     };
 
   const scope = initial.scope;
+  let connectedToScope = true;
+  const reportOutage = (error: unknown) => {
+    // A live session already knows the scope. Authorization or configuration changes
+    // must not be treated as network loss.
+    if (
+      (error instanceof WorkspaceNetworkError && connectedToScope) ||
+      (error instanceof WorkspaceOutage && error.scope === scope)
+    ) {
+      onAvailabilityChange?.(cachedCopy(scope));
+    } else {
+      connectedToScope = false;
+      onAvailabilityChange?.(null);
+    }
+    throw error;
+  };
   const confirmedLabels = new Set<string>();
   let firstRead = initial.kind === 'ready' ? initial : null;
   let revision: string | null = initial.kind === 'ready' ? initial.snapshot.revision : null;
   const accept = (state: WorkspaceState) => {
-    if (state.kind !== 'ready' || state.scope !== scope)
+    onAvailabilityChange?.(null);
+    connectedToScope = state.kind === 'ready' && state.scope === scope;
+    if (state.kind !== 'ready' || !connectedToScope)
       throw new Error('The database workspace changed. Reload to reconnect.');
     revision = state.snapshot.revision;
     for (const order of state.snapshot.workspace.orders ?? [])
@@ -113,25 +185,29 @@ export async function connectWorkspace(onCacheError: () => void) {
       firstRead = null;
       return accept(saved);
     }
-    return accept(await getState());
+    return accept(await getState().catch(reportOutage));
   };
   const save = async (
     workspace: Workspace,
     expectedRevision: string | null,
     operationId: string,
+    verifyLabelBytes = false,
   ) => {
     await uploadWorkspaceLabels(workspace, confirmedLabels);
     const body = JSON.stringify({
       workspace: serializeWorkspace(workspace),
       expectedRevision,
       operationId,
+      ...(verifyLabelBytes && { verifyLabelBytes: true }),
       databaseScope: scope,
     });
     const send = () =>
-      fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      workspaceRequest({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
     // Reuse the same operation ID if the connection drops before a response arrives.
-    const response = await send().catch(() => send());
-    const snapshot = accept(await readResponse(response));
+    const response = await send()
+      .catch(() => send())
+      .catch(reportOutage);
+    const snapshot = accept(await readResponse(response).catch(reportOutage));
     firstRead = null;
     return snapshot;
   };
@@ -140,9 +216,9 @@ export async function connectWorkspace(onCacheError: () => void) {
     onCacheError,
     remote: {
       load,
-      commit: ({ workspace, expectedRevision, operationId }) =>
-        save(workspace, expectedRevision, operationId),
-      recover: (workspace) => save(workspace, revision, crypto.randomUUID()),
+      commit: ({ workspace, expectedRevision, operationId, verifyLabelBytes }) =>
+        save(workspace, expectedRevision, operationId, verifyLabelBytes),
+      recover: (workspace) => save(workspace, revision, crypto.randomUUID(), true),
       subscribe(listener) {
         let active = true;
         let seq = 0;
@@ -152,6 +228,14 @@ export async function connectWorkspace(onCacheError: () => void) {
           const base = revision;
           void getState()
             .then((state) => {
+              if (
+                active &&
+                id === seq &&
+                base === revision &&
+                state.kind === 'ready' &&
+                state.scope === scope
+              )
+                onAvailabilityChange?.(null);
               if (
                 active &&
                 id === seq &&

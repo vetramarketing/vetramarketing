@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Activity,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -102,9 +103,15 @@ import { openPostLinkInNewTab } from '@/lib/open-post-link';
 import { readPostCompanySelection, writePostCompanySelection } from '@/lib/post-company-selection';
 import { preparePostSaveWithGroup, PostGroupSaveError } from '@/lib/post-save-with-group';
 import { browserSourceNeedsReview, connectWorkspace } from '@/lib/http-workspace-repository';
+import {
+  readOnlyWorkspaceRepository,
+  type CachedWorkspace,
+} from '@/lib/remote-workspace-repository';
+import { bangkokCalendarNow, formatCalendarDate } from '@/lib/calendar';
 import { setRemoteCarrierLabels } from '@/lib/order-labels';
 import WorkspaceStartup from './WorkspaceStartup';
 import {
+  LocalWorkspaceRepository,
   WorkspaceIdentityConflict,
   WorkspaceRemovedError,
   WorkspaceRevisionConflict,
@@ -337,6 +344,21 @@ function PostListSkeleton({ t }: { t: Translate }) {
   );
 }
 
+function WorkspaceEditorView({
+  visible,
+  managesVisibility = false,
+  children,
+}: {
+  visible: boolean;
+  managesVisibility?: boolean;
+  children: (onEditorOpenChange: (open: boolean) => void) => React.ReactNode;
+}) {
+  const [editorOpen, setEditorOpen] = useState(false);
+  if (!visible && !editorOpen) return null;
+  if (managesVisibility) return children(setEditorOpen);
+  return <Activity mode={visible ? 'visible' : 'hidden'}>{children(setEditorOpen)}</Activity>;
+}
+
 export default function MarketingApp({ initialView = 'overview' }: { initialView?: View }) {
   const [data, setData] = useState<Workspace | null>(null),
     [revision, setRevision] = useState(''),
@@ -351,9 +373,12 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
     [latestReadingsImporting, setLatestReadingsImporting] = useState(false),
     [storageError, setStorageError] = useState(''),
     [mongo, setMongo] = useState(false),
+    [cachedView, setCachedView] = useState<CachedWorkspace | null>(null),
+    [offlineOffer, setOfflineOffer] = useState<CachedWorkspace | null>(null),
     [browserCopyDiffers, setBrowserCopyDiffers] = useState(false),
     [startup, setStartup] = useState<{
       error?: string;
+      openCache?: () => void;
       initialize?: (workspace: Workspace) => Promise<unknown>;
     } | null>(null),
     [sort, setSort] = useState<PostSort>('viewers'),
@@ -361,6 +386,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
     [postClicks, setPostClicks] = useState<DailyPostClicks>({ day: '', counts: {} }),
     [clickTrackingError, setClickTrackingError] = useState(false);
   const [customerToOpen, setCustomerToOpen] = useState<string | null>(null);
+  const readOnly = cachedView !== null;
   // Keep an open draft alive when browser history changes the page behind its dialog.
   const [scriptEditing, setScriptEditing] = useState<{
     initial: ConsoleScript;
@@ -376,8 +402,9 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
     toastControl = useRef<ToastControlHandle>(null),
     pendingToast = useRef(''),
     repository = useRef<WorkspaceRepository | null>(null),
+    stopLiveUpdates = useRef<(() => void) | undefined>(undefined),
+    readingCache = useRef(false),
     navCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
-    navOpener = useRef<HTMLElement | null>(null),
     previousBodyOverflow = useRef('');
   const sampleImportBusy = useRef(false);
   const pinSaveBusy = useRef(false);
@@ -426,6 +453,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
     }
   }
   function rememberPostCompany(id: string) {
+    if (readOnly) return;
     try {
       if (writePostCompanySelection(window.localStorage, id)) return;
     } catch {
@@ -451,7 +479,6 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
       navCloseTimer.current = null;
     }
     if (!dialog.open) {
-      navOpener.current = document.activeElement as HTMLElement | null;
       previousBodyOverflow.current = document.body.style.overflow;
       dialog.showModal();
       document.body.style.overflow = 'hidden';
@@ -471,13 +498,15 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
       dialog.close();
       dialog.classList.remove(s.navClosing);
       document.body.style.overflow = previousBodyOverflow.current;
-      navOpener.current?.focus({ preventScroll: true });
+      menuButton.current?.focus({ preventScroll: true });
       navCloseTimer.current = null;
     };
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) finish();
     else navCloseTimer.current = setTimeout(finish, 150);
   }
   const applySnapshot = useCallback((snapshot: WorkspaceSnapshot) => {
+    if (readingCache.current) return;
+    setOfflineOffer(null);
     setData(snapshot.workspace);
     setRevision(snapshot.revision);
     setStorageError('');
@@ -677,23 +706,31 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
   useEffect(() => {
     let active = true;
     let unsubscribe: (() => void) | undefined;
-    void connectWorkspace(() =>
-      notify(
-        t(
-          'MongoDB saved the workspace. The browser recovery copy could not be updated.',
-          'บันทึกพื้นที่ทำงานใน MongoDB แล้ว แต่ไม่สามารถอัปเดตสำเนาในเบราว์เซอร์',
+    try {
+      setLocale(new LocalWorkspaceRepository().readLocale());
+    } catch {
+      setLocale('th');
+    }
+    void connectWorkspace(
+      () =>
+        notify(
+          t(
+            'MongoDB saved the workspace. The browser recovery copy could not be updated.',
+            'บันทึกพื้นที่ทำงานใน MongoDB แล้ว แต่ไม่สามารถอัปเดตสำเนาในเบราว์เซอร์',
+          ),
         ),
-      ),
+      (cached) => {
+        if (active && !readingCache.current) setOfflineOffer(cached);
+      },
     )
-      .then(({ store, mode, initialize, migrationSourceDigest }) => {
+      .then(({ store, mode, initialize, migrationSourceDigest, cached }) => {
         if (!active) return;
         repository.current = store;
         setMongo(mode === 'mongo');
         setRemoteCarrierLabels(mode === 'mongo');
-        try {
-          setLocale(store.readLocale());
-        } catch {
-          setLocale('th');
+        if (mode === 'cached') {
+          setStartup({ openCache: () => openCached(cached) });
+          return;
         }
         if (initialize) {
           setStartup({ initialize });
@@ -746,7 +783,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
           },
         );
         unsubscribe = store.subscribe((result) => {
-          if (!active) return;
+          if (!active || readingCache.current) return;
           if (result instanceof Error) {
             setStorageError(
               'Updated workspace could not be read. / ไม่สามารถอ่านข้อมูลที่อัปเดตได้',
@@ -755,6 +792,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
             applySnapshot(result);
           }
         });
+        stopLiveUpdates.current = unsubscribe;
       })
       .catch((error: unknown) => {
         if (active) setStartup({ error: error instanceof Error ? error.message : String(error) });
@@ -765,6 +803,23 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
       repository.current = null;
     };
   }, []);
+  function openCached(cached: CachedWorkspace) {
+    setScriptEditing(null);
+    setScriptCodeEditing(null);
+    setCustomerToOpen(null);
+    stopLiveUpdates.current?.();
+    readingCache.current = true;
+    repository.current = readOnlyWorkspaceRepository(cached);
+    setMongo(true);
+    setRemoteCarrierLabels(false);
+    setCachedView(cached);
+    setStartup(null);
+    setOfflineOffer(null);
+    setBrowserCopyDiffers(false);
+    setData(cached.workspace);
+    setRevision(cached.revision);
+    setStorageError('');
+  }
   useEffect(() => {
     let midnightTimer: ReturnType<typeof setTimeout>;
     const refresh = () => {
@@ -919,6 +974,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
   });
   const update = useCallback(
     async (next: Workspace, allowRecovery = false): Promise<boolean> => {
+      if (readOnly) return false;
       if (storageError && !allowRecovery) {
         notify(
           t(
@@ -938,6 +994,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
                 workspace: next,
                 expectedRevision: revision,
                 operationId: crypto.randomUUID(),
+                ...(allowRecovery && { verifyLabelBytes: true }),
               });
         applySnapshot(saved);
         return true;
@@ -980,7 +1037,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
         return false;
       }
     },
-    [storageError, revision, t, notify, applySnapshot, noteRepositoryFailure, mongo],
+    [storageError, revision, t, notify, applySnapshot, noteRepositoryFailure, mongo, readOnly],
   );
   const togglePostPin = useCallback(
     async (post: Post) => {
@@ -1053,6 +1110,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
   );
   function changeLocale(value: Locale) {
     setLocale(value);
+    if (readOnly) return;
     try {
       if (!repository.current) throw new Error('Workspace storage is not ready.');
       repository.current.writeLocale(value);
@@ -1596,6 +1654,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
   }
 
   function resetClickCounts() {
+    if (readOnly) return;
     try {
       setPostClicks(resetDailyPostClicks(window.localStorage));
       setClickTrackingError(false);
@@ -1617,6 +1676,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
 
   const trackPostOpen = useCallback(
     (postId: string, now = new Date()) => {
+      if (readOnly) return;
       try {
         setPostClicks(recordPostClick(window.localStorage, postId, now));
         setClickTrackingError(false);
@@ -1630,7 +1690,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
         );
       }
     },
-    [t, notify],
+    [t, notify, readOnly],
   );
   function openNextPost() {
     if (!data || postListPending) return;
@@ -1691,7 +1751,8 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
             postClicks={postClicks}
             clickTrackingError={clickTrackingError}
             pinSavingId={pinSavingId}
-            storageError={Boolean(storageError)}
+            storageError={Boolean(storageError) || readOnly}
+            readOnly={readOnly}
             togglePostPin={togglePostPin}
             trackPostOpen={trackPostOpen}
             onEdit={editPost}
@@ -1730,7 +1791,10 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
         </p>
         <button
           className={s.primary}
-          disabled={canLoadSuppliedPosts && (sampleImporting || Boolean(storageError))}
+          disabled={
+            (!emptyBecauseFiltered && !onlyHiddenStatuses && productId === 'all' && readOnly) ||
+            (canLoadSuppliedPosts && (sampleImporting || Boolean(storageError)))
+          }
           onClick={() =>
             onlyHiddenStatuses
               ? setStatusFilter('all')
@@ -1908,7 +1972,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
     ],
   };
   return (
-    <div className={s.app}>
+    <div className={s.app} key={readOnly ? 'cached' : 'live'}>
       <title>
         {t('VETRA Marketing — Your marketing, in focus', 'VETRA Marketing — พื้นที่ทำงานการตลาด')}
       </title>
@@ -1952,7 +2016,15 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
             >
               <Menu size={22} />
             </button>
-            <Link className={s.headerBrand} href="/" aria-label={t('Home', 'หน้าหลัก')}>
+            <Link
+              className={s.headerBrand}
+              href="/"
+              aria-label={t('Home', 'หน้าหลัก')}
+              onNavigate={(event) => {
+                event.preventDefault();
+                navigate('overview');
+              }}
+            >
               <img src="/logo_white.svg" alt="" width={1211} height={202} />
             </Link>
             <span className={s.breadcrumb}>
@@ -1976,7 +2048,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
               onNavigate={navigate}
               onOpenPost={(post) => {
                 navigate('posts', post.companyId);
-                editorControl.current?.open(post);
+                if (!readOnly) editorControl.current?.open(post);
               }}
               onSelectCompany={(id) => {
                 setCompanyId(id);
@@ -1990,7 +2062,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
                 setCustomerToOpen(customer.id);
                 navigate('customers');
               }}
-              onCreatePost={newPost}
+              onCreatePost={readOnly ? undefined : newPost}
             />
             <div className={s.language}>
               <button
@@ -2082,6 +2154,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
                 {view === 'posts' && (
                   <div className={s.postsWorkspaceActions}>
                     <ImportControl
+                      disabled={readOnly}
                       data={data}
                       revision={revision}
                       companyId={companyId}
@@ -2103,6 +2176,47 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
               </div>
             )}
           </div>
+          {cachedView && (
+            <div role="status" className={s.errorBanner}>
+              <strong>{t('Read-only workspace', 'พื้นที่ทำงานแบบอ่านอย่างเดียว')}</strong>
+              <span>
+                {cachedView.syncedAt
+                  ? t('Last synced', 'ซิงก์ล่าสุด') +
+                    ' ' +
+                    formatCalendarDate(bangkokCalendarNow('date', new Date(cachedView.syncedAt))) +
+                    ' ' +
+                    bangkokCalendarNow('datetime-local', new Date(cachedView.syncedAt)).slice(11) +
+                    ' ICT'
+                  : t(
+                      'Sync time unavailable for this older copy.',
+                      'ไม่มีเวลาที่ซิงก์สำหรับสำเนารุ่นเก่านี้',
+                    )}
+              </span>
+              <button onClick={() => window.location.reload()}>
+                {t('Reconnect to MongoDB', 'เชื่อมต่อ MongoDB อีกครั้ง')}
+              </button>
+            </div>
+          )}
+          {!readOnly && offlineOffer && (
+            <div role="status" className={s.errorBanner}>
+              {t('MongoDB is unavailable.', 'ไม่สามารถเชื่อมต่อ MongoDB')}
+              <button
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      t(
+                        'Open the read-only copy? Any unsaved edits on this page will be discarded.',
+                        'เปิดสำเนาแบบอ่านอย่างเดียวหรือไม่ การแก้ไขในหน้านี้ที่ยังไม่ได้บันทึกจะถูกยกเลิก',
+                      ),
+                    )
+                  )
+                    openCached(offlineOffer);
+                }}
+              >
+                {t('Open last synced copy · Read only', 'เปิดสำเนาที่ซิงก์ล่าสุด · อ่านอย่างเดียว')}
+              </button>
+            </div>
+          )}
           {storageError && (
             <div role="alert" className={s.errorBanner}>
               {storageError}
@@ -2154,6 +2268,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
               {['overview', 'analytics'].includes(view) && (
                 <div className={s.headingActions}>
                   <ImportControl
+                    disabled={readOnly}
                     data={data}
                     revision={revision}
                     companyId={companyId}
@@ -2161,7 +2276,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
                     className={s.secondary}
                     onImport={applyCsvImport}
                   />
-                  <button className={s.primary} onClick={() => newPost()}>
+                  <button className={s.primary} disabled={readOnly} onClick={() => newPost()}>
                     <Plus size={19} />
                     {t('Add post', 'เพิ่มโพสต์')}
                   </button>
@@ -2245,9 +2360,10 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
                     className={list.action}
                     onClick={resetClickCounts}
                     disabled={
-                      !clickTrackingError &&
-                      (postClicks.day !== bangkokToday() ||
-                        !Object.values(postClicks.counts).some((count) => count > 0))
+                      readOnly ||
+                      (!clickTrackingError &&
+                        (postClicks.day !== bangkokToday() ||
+                          !Object.values(postClicks.counts).some((count) => count > 0)))
                     }
                     title={t(
                       'Reset today’s clicks for all posts in this browser, including filtered-out posts.',
@@ -2257,7 +2373,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
                     <RotateCcw size={16} />
                     {t('Reset clicks', 'รีเซ็ตคลิก')}
                   </button>
-                  {missingSampleCount > 0 && !canLoadSuppliedPosts && (
+                  {!readOnly && missingSampleCount > 0 && !canLoadSuppliedPosts && (
                     <button
                       className={list.action}
                       onClick={importProvidedSamples}
@@ -2272,7 +2388,7 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
                           )}
                     </button>
                   )}
-                  {pendingLatestReadings > 0 && (
+                  {!readOnly && pendingLatestReadings > 0 && (
                     <button
                       className={list.action}
                       onClick={importProvidedLatestReadings}
@@ -2292,10 +2408,14 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
                     revision={revision}
                     t={t}
                     className={list.action}
-                    disabled={Boolean(storageError)}
+                    disabled={Boolean(storageError) || readOnly}
                     onApply={applyMetaUpdates}
                   />
-                  <button className={list.primaryAction} onClick={() => newPost()}>
+                  <button
+                    className={list.primaryAction}
+                    disabled={readOnly}
+                    onClick={() => newPost()}
+                  >
                     <Plus size={16} />
                     {t('Add post', 'เพิ่มโพสต์')}
                   </button>
@@ -2494,39 +2614,50 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
               </div>
             </>
           )}
-          {view === 'groups' && (
-            <GroupsPanel
-              data={data}
-              companyId={companyId}
-              update={update}
-              t={t}
-              notify={notify}
-              actions={
-                <GroupHtmlImportControl
-                  data={data}
-                  revision={revision}
-                  companyId={companyId}
-                  t={t}
-                  className={list.action}
-                  disabled={Boolean(storageError) || !revision || !data.companies.length}
-                  onApply={applyGroupImport}
-                />
-              }
-            />
-          )}
-          {view === 'customers' && (
-            <CustomersPanel
-              data={data}
-              companyId={companyId}
-              update={update}
-              t={t}
-              notify={notify}
-              openCustomerId={customerToOpen}
-              onOpenHandled={() => setCustomerToOpen(null)}
-            />
-          )}
+          <WorkspaceEditorView visible={view === 'groups'}>
+            {(onEditorOpenChange) => (
+              <GroupsPanel
+                onEditorOpenChange={onEditorOpenChange}
+                readOnly={readOnly}
+                data={data}
+                companyId={companyId}
+                update={update}
+                t={t}
+                notify={notify}
+                actions={
+                  <GroupHtmlImportControl
+                    data={data}
+                    revision={revision}
+                    companyId={companyId}
+                    t={t}
+                    className={list.action}
+                    disabled={
+                      readOnly || Boolean(storageError) || !revision || !data.companies.length
+                    }
+                    onApply={applyGroupImport}
+                  />
+                }
+              />
+            )}
+          </WorkspaceEditorView>
+          <WorkspaceEditorView visible={view === 'customers'}>
+            {(onEditorOpenChange) => (
+              <CustomersPanel
+                onEditorOpenChange={onEditorOpenChange}
+                readOnly={readOnly}
+                data={data}
+                companyId={companyId}
+                update={update}
+                t={t}
+                notify={notify}
+                openCustomerId={customerToOpen}
+                onOpenHandled={() => setCustomerToOpen(null)}
+              />
+            )}
+          </WorkspaceEditorView>
           {view === 'scripts' && (
             <ScriptsPanel
+              readOnly={readOnly}
               data={data}
               update={update}
               t={t}
@@ -2535,22 +2666,40 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
               onEditCode={setScriptCodeEditing}
             />
           )}
-          {view === 'orders' && (
-            <OrdersPanel data={data} companyId={companyId} update={update} t={t} notify={notify} />
-          )}
-          {(view === 'companies' || view === 'products') && (
-            <CatalogPanel
-              key={view}
-              kind={view}
-              data={data}
-              companyId={companyId}
-              update={update}
-              t={t}
-              notify={notify}
-            />
-          )}
+          <WorkspaceEditorView visible={view === 'orders'}>
+            {(onEditorOpenChange) => (
+              <OrdersPanel
+                onEditorOpenChange={onEditorOpenChange}
+                readOnly={readOnly}
+                data={data}
+                companyId={companyId}
+                update={update}
+                t={t}
+                notify={notify}
+              />
+            )}
+          </WorkspaceEditorView>
+          {(['companies', 'products'] as const).map((kind) => (
+            <WorkspaceEditorView key={kind} visible={view === kind} managesVisibility>
+              {(onEditorOpenChange) => (
+                <CatalogPanel
+                  active={view === kind}
+                  onEditorOpenChange={onEditorOpenChange}
+                  readOnly={readOnly}
+                  mediaUploadsEnabled={mongo && !readOnly}
+                  kind={kind}
+                  data={data}
+                  companyId={companyId}
+                  update={update}
+                  t={t}
+                  notify={notify}
+                />
+              )}
+            </WorkspaceEditorView>
+          ))}
           {view === 'settings' && (
             <SettingsPanel
+              readOnly={readOnly}
               mongo={mongo}
               data={data}
               revision={revision}
@@ -2566,7 +2715,14 @@ export default function MarketingApp({ initialView = 'overview' }: { initialView
             />
           )}
           {view === 'trash' && (
-            <TrashPanel data={data} companyId={companyId} update={update} t={t} notify={notify} />
+            <TrashPanel
+              readOnly={readOnly}
+              data={data}
+              companyId={companyId}
+              update={update}
+              t={t}
+              notify={notify}
+            />
           )}
           <footer className={s.footer}>
             <span>

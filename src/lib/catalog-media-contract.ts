@@ -65,6 +65,21 @@ export function planCatalogImageUpload(
   };
 }
 
+/** APNG declares acTL before the first IDAT. Some native PNG decoders only expose frame one. */
+export function pngFrameMode(bytes: Uint8Array): 'still' | 'animated' | 'invalid' {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = 8;
+  while (offset + 12 <= view.byteLength) {
+    const end = offset + 12 + view.getUint32(offset);
+    if (end > view.byteLength) return 'invalid';
+    const type = view.getUint32(offset + 4);
+    if (type === 0x6163544c) return 'animated'; // acTL
+    if (type === 0x49444154) return 'still'; // IDAT
+    offset = end;
+  }
+  return 'invalid';
+}
+
 /** Client-side convenience only; the server/provider must inspect actual uploaded file bytes. */
 export function validatePreparedCatalogFile(file: { type: string; size: number }): void {
   if (

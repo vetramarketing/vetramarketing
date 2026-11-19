@@ -17,11 +17,13 @@ import {
 } from '../cloudinary-media';
 import type { Workspace } from '../types';
 
-type MediaOptions = {
+export type MediaOptions = {
   previous?: Workspace;
   env?: Record<string, string | undefined>;
   fetch?: typeof fetch;
+  staged?: (url: string, target: CatalogMediaTarget) => Promise<VerifiedImage | null>;
 };
+export type VerifiedImage = { imageUrl: string; imageAsset: CloudinaryImage };
 
 function configuration(env: Record<string, string | undefined>) {
   const cloudName = env.CLOUDINARY_CLOUD_NAME?.trim();
@@ -103,15 +105,8 @@ async function submitImage(
     timestamp: String(Math.floor(Date.now() / 1000)),
     upload_preset: config.preset,
   };
-  const signed = Object.keys(params)
-    .sort()
-    .map((key) => `${key}=${params[key]}`)
-    .join('&');
-  const form = new FormData();
-  for (const [key, value] of Object.entries(params)) form.set(key, value);
+  const form = signedForm(params, config);
   form.set('file', source);
-  form.set('signature', digest(signed + config.secret));
-  form.set('api_key', config.key);
   // Cloudinary retrieves external sources. Our server never connects to user-supplied origins.
   const response = await request(config.base + '/image/upload', {
     method: 'POST',
@@ -121,6 +116,106 @@ async function submitImage(
   });
   if (!response.ok) throw new Error(`Cloudinary image upload failed (HTTP ${response.status}).`);
   await response.arrayBuffer();
+}
+
+function signedForm(params: Record<string, string>, config: Config) {
+  const signed = Object.keys(params)
+    .sort()
+    .map((key) => `${key}=${params[key]}`)
+    .join('&');
+  const form = new FormData();
+  for (const [key, value] of Object.entries(params)) form.set(key, value);
+  form.set('signature', digest(signed + config.secret));
+  form.set('api_key', config.key);
+  return form;
+}
+
+export function directUploadPlan(
+  scope: string,
+  target: CatalogMediaTarget,
+  id: string,
+  options: MediaOptions,
+) {
+  return planCatalogImageUpload(
+    configuration(options.env ?? process.env),
+    'direct-' + scope,
+    {
+      ...target,
+      recordId:
+        target.recordId.length > 48 ? digest(target.recordId).slice(0, 32) : target.recordId,
+    },
+    'u-' + id,
+  );
+}
+
+/** The random ownership marker is minted and persisted by the server before contacting Cloudinary. */
+export async function uploadPreparedImage(
+  plan: CatalogUploadPlan,
+  bytes: Buffer,
+  mime: string,
+  marker: string,
+  options: MediaOptions,
+) {
+  const config = configuration(options.env ?? process.env);
+  if (config.cloudName !== plan.cloudName) throw new Error('The configured cloud has changed.');
+  const request = options.fetch ?? fetch;
+  let resource = await readAsset(plan, config, request);
+  if (!resource) {
+    await verifyCloudinaryConfiguration(options);
+    await submitImage(
+      config,
+      plan,
+      new Blob([Uint8Array.from(bytes)], { type: mime }),
+      marker,
+      request,
+    );
+    resource = await readAsset(plan, config, request);
+  }
+  if (!resource || resource.context?.custom?.vetra_source !== marker)
+    throw new Error('The uploaded image could not be verified.');
+  const image = parseCloudinaryUploadMetadata(resource, plan);
+  await verifyBundledBytes(image.imageAsset, bytes, request);
+  return image;
+}
+
+export async function deletePreparedImage(
+  plan: CatalogUploadPlan,
+  marker: string,
+  assetId: string | undefined,
+  options: MediaOptions,
+) {
+  const config = configuration(options.env ?? process.env);
+  if (config.cloudName !== plan.cloudName) throw new Error('The configured cloud has changed.');
+  const request = options.fetch ?? fetch;
+  const resource = await readAsset(plan, config, request);
+  if (!resource) return 'absent';
+  if (
+    resource.context?.custom?.vetra_source !== marker ||
+    resource.public_id !== plan.publicId ||
+    resource.resource_type !== 'image' ||
+    resource.type !== 'upload' ||
+    typeof resource.asset_id !== 'string' ||
+    !resource.asset_id ||
+    (assetId && resource.asset_id !== assetId)
+  )
+    throw new Error('The provider could not verify ownership of this upload.');
+  const body = signedForm(
+    {
+      asset_id: resource.asset_id,
+      invalidate: 'true',
+      timestamp: String(Math.floor(Date.now() / 1000)),
+    },
+    config,
+  );
+  const response = await request(config.base + '/image/destroy', {
+    method: 'POST',
+    body,
+    redirect: 'error',
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!response.ok || !['ok', 'not found'].includes((await response.json()).result))
+    throw new Error('Image cleanup failed.');
+  return 'deleted';
 }
 
 async function verifyBundledBytes(image: CloudinaryImage, bytes: Buffer, request: typeof fetch) {
@@ -228,6 +323,8 @@ export async function migrateWorkspaceMedia(
     if (!url) return undefined;
     if (trusted && cloudinaryImageUrl(trusted) === url)
       return { imageUrl: url, imageAsset: trusted };
+    const staged = await options.staged?.(url, target);
+    if (staged) return staged;
     if (!config) {
       config = configuration(env);
       await verifyCloudinaryConfiguration({ env, fetch: request });

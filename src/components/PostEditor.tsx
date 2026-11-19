@@ -843,7 +843,7 @@ export default function PostEditor({
         </header>
         <form ref={form} onSubmit={submit} className={styles.form}>
           <div className={styles.body}>
-            <div className={styles.fields}>
+            <fieldset className={styles.fields} disabled={saving || deleting}>
               <div className={styles.pair}>
                 <SelectionField
                   label={t('Company', 'บริษัท')}
@@ -1272,7 +1272,7 @@ export default function PostEditor({
                   </label>
                 </div>
               </section>
-            </div>
+            </fieldset>
           </div>
           <footer className={styles.footer}>
             {error && (

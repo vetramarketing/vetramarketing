@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -43,6 +44,7 @@ import { facebookGroupUrl } from '@/lib/facebook-group-link';
 import { productCompanyIdMap } from '@/lib/product-company';
 import { bangkokToday } from '@/lib/post-clicks';
 import type { WorkspaceRepository } from '@/lib/workspace-repository';
+import { serializeWorkspace } from '@/lib/workspace-storage';
 import { readBrowserMigrationSource } from '@/lib/http-workspace-repository';
 import {
   exportWorkspaceWithLabels,
@@ -60,6 +62,7 @@ interface PanelProps {
   update: (next: Workspace) => Promise<boolean>;
   t: Translate;
   notify: (message: string) => void;
+  readOnly?: boolean;
 }
 const palette = ['#4169E1', '#8B6EAD', '#38947D', '#C78843', '#BB6381', '#627D98'];
 const visibleInCompany = (item: { companyId: string }, companyId: string) =>
@@ -94,11 +97,19 @@ export function GroupsPanel({
   t,
   notify,
   actions,
-}: PanelProps & { actions?: ReactNode }) {
+  onEditorOpenChange,
+  readOnly = false,
+}: PanelProps & { actions?: ReactNode; onEditorOpenChange: (open: boolean) => void }) {
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Group | null>(null);
   const [editingBaseline, setEditingBaseline] = useState<Group | null>(null);
+  const initialDraft = useRef<Group | null>(null);
+  const editingId = editing?.id;
+  const dirty = Boolean(editing && !entityEditIsCurrent(initialDraft.current, editing));
+  useLayoutEffect(() => onEditorOpenChange(Boolean(editingId)), [editingId, onEditorOpenChange]);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const editorRef = useRef<HTMLFormElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -131,29 +142,38 @@ export function GroupsPanel({
   );
   const begin = useCallback(
     (group?: Group) => {
+      if (readOnly || savingRef.current || (group && editingId === group.id)) return;
+      if (
+        dirty &&
+        !window.confirm(
+          t('Discard unsaved group changes?', 'ละทิ้งการแก้ไขกลุ่มที่ยังไม่ได้บันทึกหรือไม่'),
+        )
+      )
+        return;
       previousFocus.current = document.activeElement as HTMLElement | null;
       setEditingBaseline(group ? { ...group } : null);
-      setEditing(
-        group
-          ? { ...group }
-          : {
-              id: newId(),
-              companyId: companyId !== 'all' ? companyId : sortCatalog(data.companies)[0]?.id || '',
-              name: '',
-              facebookId: '',
-              category: '',
-              notes: '',
-            },
-      );
+      const next = group
+        ? { ...group }
+        : {
+            id: newId(),
+            companyId: companyId !== 'all' ? companyId : sortCatalog(data.companies)[0]?.id || '',
+            name: '',
+            facebookId: '',
+            category: '',
+            notes: '',
+          };
+      initialDraft.current = next;
+      setEditing(next);
       setError('');
       requestAnimationFrame(() => {
         editorRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
         editorRef.current?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
       });
     },
-    [data.companies, companyId],
+    [data.companies, companyId, dirty, editingId, readOnly, t],
   );
   const closeEditor = useCallback(() => {
+    if (savingRef.current) return;
     setEditing(null);
     requestAnimationFrame(() => {
       const target = previousFocus.current;
@@ -161,10 +181,24 @@ export function GroupsPanel({
       else addButtonRef.current?.focus({ preventScroll: true });
     });
   }, []);
+  const saveGroups = useCallback(
+    async (next: Workspace) => {
+      if (readOnly || savingRef.current) return false;
+      savingRef.current = true;
+      setSaving(true);
+      try {
+        return await update(next);
+      } finally {
+        savingRef.current = false;
+        setSaving(false);
+      }
+    },
+    [readOnly, update],
+  );
   const moveToTrash = useCallback(
     async (group: Group) => {
       if (
-        !(await update({
+        !(await saveGroups({
           ...data,
           groups: data.groups.map((item) =>
             item.id === group.id ? { ...item, deletedAt: new Date().toISOString() } : item,
@@ -179,7 +213,7 @@ export function GroupsPanel({
         ),
       );
     },
-    [data, update, notify, t],
+    [data, saveGroups, notify, t],
   );
   const groupCards = useMemo(
     () =>
@@ -192,22 +226,26 @@ export function GroupsPanel({
               <span className={styles.communityIcon}>
                 <UsersRound size={25} />
               </span>
-              <div className={styles.cardActions}>
-                <button
-                  className={styles.iconButton}
-                  aria-label={`${t('Edit', 'แก้ไข')} ${group.name}`}
-                  onClick={() => begin(group)}
-                >
-                  <Pencil size={17} />
-                </button>
-                <button
-                  className={styles.iconButton}
-                  aria-label={`${t('Move to Trash', 'ย้ายไปถังขยะ')} ${group.name}`}
-                  onClick={() => void moveToTrash(group)}
-                >
-                  <Trash2 size={17} />
-                </button>
-              </div>
+              {!readOnly && (
+                <div className={styles.cardActions}>
+                  <button
+                    className={styles.iconButton}
+                    aria-label={`${t('Edit', 'แก้ไข')} ${group.name}`}
+                    onClick={() => begin(group)}
+                    disabled={saving}
+                  >
+                    <Pencil size={17} />
+                  </button>
+                  <button
+                    className={styles.iconButton}
+                    aria-label={`${t('Move to Trash', 'ย้ายไปถังขยะ')} ${group.name}`}
+                    onClick={() => void moveToTrash(group)}
+                    disabled={saving}
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
+              )}
             </div>
             <span className={styles.category}>
               {group.category || t('Facebook group', 'กลุ่ม Facebook')}
@@ -256,11 +294,11 @@ export function GroupsPanel({
           </article>
         );
       }),
-    [groups, companiesById, postCounts, t, begin, moveToTrash],
+    [groups, companiesById, postCounts, t, begin, moveToTrash, readOnly, saving],
   );
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!editing) return;
+    if (!editing || readOnly || savingRef.current) return;
     if (
       !entityEditIsCurrent(
         editingBaseline,
@@ -323,8 +361,9 @@ export function GroupsPanel({
       category: editing.category.trim(),
       notes: editing.notes.trim(),
     };
+    setError('');
     if (
-      !(await update({
+      !(await saveGroups({
         ...data,
         groups: data.groups.some((group) => group.id === item.id)
           ? data.groups.map((group) => (group.id === item.id ? item : group))
@@ -347,18 +386,24 @@ export function GroupsPanel({
             )}
           </p>
         </div>
-        <div className={styles.catalogActions}>
-          {actions}
-          <button
-            ref={addButtonRef}
-            className={styles.primaryButton}
-            onClick={() => begin()}
-            disabled={!data.companies.length}
-          >
-            <Plus size={19} />
-            {t('Add group', 'เพิ่มกลุ่ม')}
-          </button>
-        </div>
+        {!readOnly && (
+          <div className={styles.catalogActions}>
+            {actions && (
+              <div className={styles.groupImportAction} inert={saving}>
+                {actions}
+              </div>
+            )}
+            <button
+              ref={addButtonRef}
+              className={styles.primaryButton}
+              onClick={() => begin()}
+              disabled={saving || !data.companies.length}
+            >
+              <Plus size={19} />
+              {t('Add group', 'เพิ่มกลุ่ม')}
+            </button>
+          </div>
+        )}
       </div>
       <div className={styles.search}>
         <Search size={19} />
@@ -370,8 +415,13 @@ export function GroupsPanel({
         />
         <span>{groups.length}</span>
       </div>
-      {editing && (
-        <form className={`${styles.editor} ${styles.groupEditor}`} onSubmit={save} ref={editorRef}>
+      {editing && !readOnly && (
+        <form
+          className={`${styles.editor} ${styles.groupEditor}`}
+          onSubmit={save}
+          ref={editorRef}
+          aria-busy={saving}
+        >
           <div className={styles.sectionHeading}>
             <div>
               <span className={styles.eyebrow}>{t('GROUP DETAILS', 'รายละเอียดกลุ่ม')}</span>
@@ -386,11 +436,12 @@ export function GroupsPanel({
               className={styles.iconButton}
               aria-label={t('Close group editor', 'ปิดการแก้ไขกลุ่ม')}
               onClick={closeEditor}
+              disabled={saving}
             >
               <X size={20} />
             </button>
           </div>
-          <div className={styles.formGrid}>
+          <fieldset className={`${styles.formGrid} ${styles.groupFields}`} disabled={saving}>
             <label>
               {t('Group name', 'ชื่อกลุ่ม')}
               <input
@@ -482,19 +533,24 @@ export function GroupsPanel({
                 )}
               />
             </label>
-          </div>
+          </fieldset>
           {error && (
             <p className={styles.error} role="alert">
               {error}
             </p>
           )}
           <div className={styles.formActions}>
-            <button type="button" className={styles.secondaryButton} onClick={closeEditor}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={closeEditor}
+              disabled={saving}
+            >
               {t('Cancel', 'ยกเลิก')}
             </button>
-            <button className={styles.primaryButton} type="submit">
+            <button className={styles.primaryButton} type="submit" disabled={saving}>
               <Check size={18} />
-              {t('Save group', 'บันทึกกลุ่ม')}
+              {saving ? t('Saving…', 'กำลังบันทึก…') : t('Save group', 'บันทึกกลุ่ม')}
             </button>
           </div>
         </form>
@@ -533,6 +589,7 @@ export function SettingsPanel({
   repository,
   revision,
   mongo,
+  readOnly = false,
 }: PanelProps & { repository: WorkspaceRepository; revision: string; mongo: boolean }) {
   const [pending, setPending] = useState<Workspace | null>(null);
   const preparedRestore = useRef<PreparedWorkspaceLabelRestore | null>(null);
@@ -546,6 +603,9 @@ export function SettingsPanel({
   const [resetRevision, setResetRevision] = useState<string | null>(null);
   const [olderBackups, setOlderBackups] = useState<Array<{ key: string; version: string }>>([]);
   const [hasBrowserSource, setHasBrowserSource] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState('');
+  const cleaningRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     try {
@@ -570,6 +630,14 @@ export function SettingsPanel({
   const download = async () => {
     setError('');
     try {
+      if (readOnly) {
+        downloadJson(
+          JSON.stringify(serializeWorkspace(data), null, 2),
+          `vetra-offline-records-${bangkokToday()}.json`,
+        );
+        notify(t('Workspace records downloaded.', 'ดาวน์โหลดข้อมูลพื้นที่ทำงานแล้ว'));
+        return;
+      }
       downloadJson(await exportWorkspaceWithLabels(data), `vetra-workspace-${bangkokToday()}.json`);
       notify(
         t(
@@ -586,6 +654,40 @@ export function SettingsPanel({
           ' ' +
           (cause instanceof Error ? cause.message : ''),
       );
+    }
+  };
+  const cleanUploads = async () => {
+    if (readOnly || cleaningRef.current) return;
+    cleaningRef.current = true;
+    setCleaning(true);
+    setCleanupResult('');
+    try {
+      const response = await fetch('/api/workspace/media/cleanup', { method: 'POST' });
+      if (!response.ok) throw new Error('Cleanup failed');
+      const { deleted, failed } = await response.json();
+      if (![deleted, failed].every((count) => Number.isSafeInteger(count) && count >= 0))
+        throw new Error('Invalid cleanup response');
+      setCleanupResult(
+        failed
+          ? t(
+              `Removed ${deleted} ${deleted === 1 ? 'upload' : 'uploads'}. ${failed} could not be removed. Run cleanup again to retry.`,
+              `ลบไฟล์อัปโหลดแล้ว ${deleted} ไฟล์ ลบไม่สำเร็จ ${failed} ไฟล์ กดล้างไฟล์อีกครั้งเพื่อลองใหม่`,
+            )
+          : deleted
+            ? t(
+                `Removed ${deleted} unused ${deleted === 1 ? 'upload' : 'uploads'}.`,
+                `ลบไฟล์อัปโหลดที่ไม่ได้ใช้แล้ว ${deleted} ไฟล์`,
+              )
+            : t(
+                'No unused uploads were eligible for cleanup.',
+                'ไม่พบไฟล์อัปโหลดที่เข้าเกณฑ์ให้ลบ',
+              ),
+      );
+    } catch {
+      setCleanupResult(t('Cleanup could not finish. Try again.', 'ล้างไฟล์ไม่สำเร็จ กรุณาลองใหม่'));
+    } finally {
+      cleaningRef.current = false;
+      setCleaning(false);
     }
   };
   const downloadOlderBackup = (key: string, version: string) => {
@@ -605,7 +707,7 @@ export function SettingsPanel({
   };
   const readBackup = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || readOnly) return;
     const selectedRevision = revision;
     setError('');
     setPending(null);
@@ -644,7 +746,11 @@ export function SettingsPanel({
         </div>
         <span className={styles.localBadge}>
           <LockKeyhole size={16} />
-          {mongo ? 'MongoDB' : t('On this browser', 'ในเบราว์เซอร์นี้')}
+          {readOnly
+            ? t('Read-only copy', 'สำเนาอ่านอย่างเดียว')
+            : mongo
+              ? 'MongoDB'
+              : t('On this browser', 'ในเบราว์เซอร์นี้')}
         </span>
       </div>
       <div className={styles.settingsGrid}>
@@ -653,20 +759,27 @@ export function SettingsPanel({
             <ShieldCheck size={25} />
           </span>
           <h3>
-            {mongo
-              ? t('MongoDB workspace', 'พื้นที่ทำงาน MongoDB')
-              : t('A local workspace', 'พื้นที่ทำงานในเบราว์เซอร์')}
+            {readOnly
+              ? t('Last synced workspace', 'พื้นที่ทำงานที่ซิงก์ล่าสุด')
+              : mongo
+                ? t('MongoDB workspace', 'พื้นที่ทำงาน MongoDB')
+                : t('A local workspace', 'พื้นที่ทำงานในเบราว์เซอร์')}
           </h3>
           <p>
-            {mongo
+            {readOnly
               ? t(
-                  'Your workspace records and carrier PDFs are saved in MongoDB.',
-                  'ข้อมูลพื้นที่ทำงานและ PDF ใบปะหน้าถูกบันทึกใน MongoDB',
+                  'You are viewing the last workspace records this browser received from MongoDB.',
+                  'คุณกำลังดูข้อมูลพื้นที่ทำงานล่าสุดที่เบราว์เซอร์นี้ได้รับจาก MongoDB',
                 )
-              : t(
-                  'Your companies, customers, products, orders, carrier PDFs, posts, scripts, and Viewers totals are saved in this browser on this device.',
-                  'บริษัท ลูกค้า สินค้า ออเดอร์ PDF ใบปะหน้า โพสต์ สคริปต์ และยอดผู้ชมถูกบันทึกในเบราว์เซอร์นี้บนอุปกรณ์นี้',
-                )}
+              : mongo
+                ? t(
+                    'Your workspace records and carrier PDFs are saved in MongoDB.',
+                    'ข้อมูลพื้นที่ทำงานและ PDF ใบปะหน้าถูกบันทึกใน MongoDB',
+                  )
+                : t(
+                    'Your companies, customers, products, orders, carrier PDFs, posts, scripts, and Viewers totals are saved in this browser on this device.',
+                    'บริษัท ลูกค้า สินค้า ออเดอร์ PDF ใบปะหน้า โพสต์ สคริปต์ และยอดผู้ชมถูกบันทึกในเบราว์เซอร์นี้บนอุปกรณ์นี้',
+                  )}
           </p>
           {!mongo && (
             <div className={styles.infoNote}>
@@ -694,20 +807,29 @@ export function SettingsPanel({
           </span>
           <h3>{t('Keep a copy of your work', 'เก็บสำเนางานของคุณ')}</h3>
           <p>
-            {t(
-              'Download a JSON backup of the workspace, including scripts, orders, attached carrier PDFs, shipping settings, and Trash.',
-              'ดาวน์โหลดไฟล์สำรอง JSON ของพื้นที่ทำงาน รวมสคริปต์ ออเดอร์ PDF ใบปะหน้าที่แนบไว้ การตั้งค่าจัดส่ง และถังขยะ',
-            )}
+            {readOnly
+              ? t(
+                  'Download the workspace records saved in this browser. The export contains links and references for files, including carrier PDFs.',
+                  'ดาวน์โหลดข้อมูลพื้นที่ทำงานที่บันทึกในเบราว์เซอร์นี้ ไฟล์ส่งออกมีลิงก์และข้อมูลอ้างอิงไฟล์ รวมถึง PDF ใบปะหน้า',
+                )
+              : t(
+                  'Download a JSON backup of the workspace, including scripts, orders, attached carrier PDFs, shipping settings, and Trash.',
+                  'ดาวน์โหลดไฟล์สำรอง JSON ของพื้นที่ทำงาน รวมสคริปต์ ออเดอร์ PDF ใบปะหน้าที่แนบไว้ การตั้งค่าจัดส่ง และถังขยะ',
+                )}
           </p>
           <div className={styles.backupButtons}>
             <button className={styles.primaryButton} onClick={download}>
               <ArrowDownToLine size={18} />
-              {t('Download backup', 'ดาวน์โหลดไฟล์สำรอง')}
+              {readOnly
+                ? t('Download workspace records', 'ดาวน์โหลดข้อมูลพื้นที่ทำงาน')
+                : t('Download backup', 'ดาวน์โหลดไฟล์สำรอง')}
             </button>
-            <button className={styles.secondaryButton} onClick={() => fileRef.current?.click()}>
-              <ArrowUpFromLine size={18} />
-              {t('Restore backup', 'กู้คืนไฟล์สำรอง')}
-            </button>
+            {!readOnly && (
+              <button className={styles.secondaryButton} onClick={() => fileRef.current?.click()}>
+                <ArrowUpFromLine size={18} />
+                {t('Restore backup', 'กู้คืนไฟล์สำรอง')}
+              </button>
+            )}
             {hasBrowserSource && (
               <button
                 className={styles.secondaryButton}
@@ -731,14 +853,16 @@ export function SettingsPanel({
                 {t('Download original browser copy', 'ดาวน์โหลดสำเนาเดิมจากเบราว์เซอร์')}
               </button>
             )}
-            <input
-              ref={fileRef}
-              className={styles.hiddenInput}
-              aria-label={t('Choose JSON backup', 'เลือกไฟล์สำรอง JSON')}
-              type="file"
-              accept=".json,application/json"
-              onChange={readBackup}
-            />
+            {!readOnly && (
+              <input
+                ref={fileRef}
+                className={styles.hiddenInput}
+                aria-label={t('Choose JSON backup', 'เลือกไฟล์สำรอง JSON')}
+                type="file"
+                accept=".json,application/json"
+                onChange={readBackup}
+              />
+            )}
           </div>
           <p className={styles.smallText}>
             {t(
@@ -776,7 +900,7 @@ export function SettingsPanel({
           )}
         </section>
       </div>
-      {pending && (
+      {pending && !readOnly && (
         <section
           className={styles.confirmPanel}
           aria-label={t('Review backup restore', 'ตรวจสอบการกู้คืนไฟล์สำรอง')}
@@ -878,6 +1002,27 @@ export function SettingsPanel({
           </div>
         </section>
       )}
+      {mongo && !readOnly && (
+        <section className={styles.settingsCard}>
+          <div className={styles.sectionHeading}>
+            <h3>{t('Unused image uploads', 'รูปที่อัปโหลดแต่ไม่ได้ใช้')}</h3>
+            <Package size={24} className={styles.muted} aria-hidden="true" />
+          </div>
+          <p>
+            {t(
+              'Remove abandoned uploads more than an hour old once they are confirmed unreferenced by the workspace.',
+              'ลบรูปที่อัปโหลดค้างไว้นานกว่าหนึ่งชั่วโมง เมื่อตรวจสอบแล้วว่าไม่มีรายการในพื้นที่ทำงานอ้างอิงถึงรูปนั้น',
+            )}
+          </p>
+          <button className={styles.secondaryButton} disabled={cleaning} onClick={cleanUploads}>
+            <Trash2 size={18} aria-hidden="true" />
+            {cleaning
+              ? t('Cleaning up…', 'กำลังล้างไฟล์…')
+              : t('Clean up unused uploads', 'ล้างรูปอัปโหลดที่ไม่ได้ใช้')}
+          </button>
+          {cleanupResult && <p role="status">{cleanupResult}</p>}
+        </section>
+      )}
       <section className={styles.settingsCard}>
         <div className={styles.sectionHeading}>
           <div>
@@ -917,7 +1062,7 @@ export function SettingsPanel({
           )}
         </p>
       </section>
-      {data.sample && (
+      {data.sample && !readOnly && (
         <section className={styles.resetCard}>
           <div>
             <h3>
@@ -996,7 +1141,7 @@ export function SettingsPanel({
   );
 }
 
-export function TrashPanel({ data, companyId, update, t, notify }: PanelProps) {
+export function TrashPanel({ data, companyId, update, t, notify, readOnly = false }: PanelProps) {
   const restoringRef = useRef(false);
   const [restoring, setRestoring] = useState(false);
   const now = Date.now();
@@ -1039,7 +1184,7 @@ export function TrashPanel({ data, companyId, update, t, notify }: PanelProps) {
     id: string,
     type: 'post' | 'group' | 'product' | 'customer' | 'order' | 'script',
   ) => {
-    if (restoringRef.current) return;
+    if (readOnly || restoringRef.current) return;
     const entry = entries.find((item) => item.id === id && item.type === type);
     if (!entry || Date.now() - new Date(entry.deletedAt!).getTime() >= retention) {
       notify(t('This item is no longer available to restore.', 'รายการนี้ไม่สามารถกู้คืนได้แล้ว'));
@@ -1200,14 +1345,16 @@ export function TrashPanel({ data, companyId, update, t, notify }: PanelProps) {
                 <span className={styles.daysLeft}>
                   {days} {t('days left', 'วันเหลือ')}
                 </span>
-                <button
-                  className={styles.secondaryButton}
-                  disabled={restoring}
-                  onClick={() => restore(entry.id, entry.type)}
-                >
-                  <ArchiveRestore size={17} />
-                  {t('Restore', 'กู้คืน')}
-                </button>
+                {!readOnly && (
+                  <button
+                    className={styles.secondaryButton}
+                    disabled={restoring}
+                    onClick={() => restore(entry.id, entry.type)}
+                  >
+                    <ArchiveRestore size={17} />
+                    {t('Restore', 'กู้คืน')}
+                  </button>
+                )}
               </article>
             );
           })}

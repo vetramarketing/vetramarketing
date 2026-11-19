@@ -7,7 +7,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { MongoClient } from 'mongodb';
+import { Binary, MongoClient } from 'mongodb';
 import { PDFDocument } from 'pdf-lib';
 import { createEmptyWorkspace } from '../src/lib/data';
 import { emptyShippingAddress } from '../src/lib/orders';
@@ -20,6 +20,7 @@ import {
 } from '../src/lib/server/mongo-workspace';
 import { isLocalWorkspaceRequest } from '../src/lib/server/workspace-request';
 import { serializeWorkspace } from '../src/lib/workspace-storage';
+import { checkStagedImages } from './helpers/staged-images';
 
 test('workspace requests require local access and same-origin mutations', () => {
   const address = 'http://127.0.0.1:' + (process.env.PORT || 3100);
@@ -124,7 +125,7 @@ test(
     const db = await getWorkspaceMongoDb();
     await t.test(
       'private carrier PDFs validate before commit and preserve their bytes on retry',
-      async () => {
+      async (pdfTest) => {
         const pdf = await PDFDocument.create();
         pdf.addPage([100, 180]);
         const bytes = await pdf.save();
@@ -179,7 +180,41 @@ test(
         const storedOrder = committed.workspace.orders[0];
         assert.ok('label' in storedOrder);
         assert.deepEqual(storedOrder.label, label);
+        await pdfTest.test(
+          'verified restore rejects same-size damaged PDF bytes without replacing active records',
+          async () => {
+            const files = db.collection<{ _id: string; data: Binary }>('vetra_carrier_labels');
+            const damaged = Uint8Array.from(bytes);
+            damaged[13] ^= 0x10;
+            await files.updateOne({ _id: label.id }, { $set: { data: new Binary(damaged) } });
+            const restored = {
+              workspace: {
+                ...committed.workspace,
+                companies: committed.workspace.companies.map((company) => ({
+                  ...company,
+                  name: 'Replacement company',
+                })),
+              },
+              expectedRevision: committed.revision,
+              verifyLabelBytes: true,
+              operationId: 'verified-restore',
+            };
+            await assert.rejects(
+              writeMongoWorkspace(restored),
+              /Stored carrier PDF failed verification/,
+            );
+            assert.deepEqual(await readMongoWorkspace(), committed);
+            await files.updateOne({ _id: label.id }, { $set: { data: new Binary(bytes) } });
+            const valid = await writeMongoWorkspace(restored);
+            assert.equal(valid.workspace.companies[0].name, 'Replacement company');
+            assert.deepEqual(await writeMongoWorkspace(restored), valid);
+          },
+        );
       },
+    );
+    await t.test(
+      'image submission validation, uncertain retries, cleanup and concurrent save',
+      () => checkStagedImages(db),
     );
     await db
       .collection('vetra_companies')

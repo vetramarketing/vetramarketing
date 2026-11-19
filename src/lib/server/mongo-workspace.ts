@@ -12,8 +12,9 @@ import {
   serializeWorkspace,
   type StoredWorkspaceV12,
 } from '../workspace-storage';
-import { migrateWorkspaceMedia } from './workspace-media';
+import { migrateWorkspaceMedia, type MediaOptions } from './workspace-media';
 import { assertStoredLabels } from './mongo-labels';
+import { cleanupStagedImages, commitStagedReferences, resolveStagedImage } from './staged-images';
 
 const workspaceId = 'vetra-marketing';
 const entitySets = [
@@ -41,6 +42,7 @@ type Receipt = {
   _id: string;
   expectedRevision: string | null;
   requestDigest: string;
+  verifyLabelBytes?: boolean;
   revision: string;
 };
 export type MongoWorkspaceSnapshot = {
@@ -53,6 +55,7 @@ export type MongoWorkspaceWrite = {
   workspace: unknown;
   expectedRevision: string | null;
   operationId: string;
+  verifyLabelBytes?: boolean;
 };
 
 export class MongoWorkspaceError extends Error {
@@ -69,32 +72,42 @@ const digest = (value: string) => createHash('sha256').update(value).digest('hex
 
 type Connection = { client: MongoClient; db: Db; scope: string };
 const cache = globalThis as typeof globalThis & { vetraMongoConnection?: Promise<Connection> };
+function configuredConnection(): Connection {
+  const uri = process.env.MONGODB_URI?.trim();
+  if (!uri) throw new MongoWorkspaceError('MONGODB_NOT_CONFIGURED', 503);
+  const client = new MongoClient(uri, {
+    appName: 'vetra-marketing',
+    serverSelectionTimeoutMS: 12000,
+    maxPoolSize: 8,
+    ignoreUndefined: true,
+  });
+  const path = uri
+    .split('?')[0]
+    .slice(uri.indexOf('://') + 3)
+    .split('/')[1];
+  const name =
+    process.env.MONGODB_DB?.trim() || (path && decodeURIComponent(path)) || 'vetra_marketing';
+  if (['admin', 'config', 'local'].includes(name))
+    throw new MongoWorkspaceError('INVALID_DATABASE', 503);
+  const db = client.db(name);
+  const host =
+    client.options.srvHost ||
+    client.options.hosts
+      .map((item) => item.toString())
+      .sort()
+      .join(',');
+  const scope = digest(host + '/' + name).slice(0, 32);
+  return { client, db, scope };
+}
+
+/** Resolve the configured scope without opening a database connection. */
+export function configuredWorkspaceScope(): string {
+  return configuredConnection().scope;
+}
+
 async function connection(): Promise<Connection> {
   if (!cache.vetraMongoConnection) {
-    const uri = process.env.MONGODB_URI?.trim();
-    if (!uri) throw new MongoWorkspaceError('MONGODB_NOT_CONFIGURED', 503);
-    const client = new MongoClient(uri, {
-      appName: 'vetra-marketing',
-      serverSelectionTimeoutMS: 12000,
-      maxPoolSize: 8,
-      ignoreUndefined: true,
-    });
-    const path = uri
-      .split('?')[0]
-      .slice(uri.indexOf('://') + 3)
-      .split('/')[1];
-    const name =
-      process.env.MONGODB_DB?.trim() || (path && decodeURIComponent(path)) || 'vetra_marketing';
-    if (['admin', 'config', 'local'].includes(name))
-      throw new MongoWorkspaceError('INVALID_DATABASE', 503);
-    const db = client.db(name);
-    const host =
-      client.options.srvHost ||
-      client.options.hosts
-        .map((item) => item.toString())
-        .sort()
-        .join(',');
-    const scope = digest(host + '/' + name).slice(0, 32);
+    const { client, db, scope } = configuredConnection();
     cache.vetraMongoConnection = client
       .connect()
       .then(() => ({ client, db, scope }))
@@ -162,6 +175,16 @@ export async function readMongoWorkspace(): Promise<MongoWorkspaceSnapshot | nul
   );
 }
 
+export async function cleanupWorkspaceImages(id: string | null, options: MediaOptions = {}) {
+  const { db, scope } = await connection();
+  return cleanupStagedImages(
+    db,
+    async (session) => (await readSnapshot(db, scope, session))?.workspace,
+    id,
+    options,
+  );
+}
+
 async function updateRows(
   db: Db,
   session: ClientSession,
@@ -193,6 +216,7 @@ export async function writeMongoWorkspace({
   workspace: input,
   expectedRevision,
   operationId,
+  verifyLabelBytes = false,
 }: MongoWorkspaceWrite): Promise<MongoWorkspaceSnapshot> {
   if (
     typeof operationId !== 'string' ||
@@ -220,6 +244,7 @@ export async function writeMongoWorkspace({
     if (
       record.expectedRevision !== expectedRevision ||
       record.requestDigest !== requestDigest ||
+      (record.verifyLabelBytes === true) !== verifyLabelBytes ||
       record.revision !== current?.revision
     )
       throw conflict();
@@ -244,7 +269,10 @@ export async function writeMongoWorkspace({
   }
   await assertStoredLabels(workspace, db);
   const prepared = serializeWorkspace(
-    await migrateWorkspaceMedia(workspace, workspaceId, { previous: priorWorkspace ?? undefined }),
+    await migrateWorkspaceMedia(workspace, workspaceId, {
+      previous: priorWorkspace ?? undefined,
+      staged: (url, target) => resolveStagedImage(db, url, target),
+    }),
   );
   const revision = randomUUID();
   const migrationSourceDigest = before?.migrationSourceDigest ?? requestDigest;
@@ -268,6 +296,10 @@ export async function writeMongoWorkspace({
           if (result) return result;
         }
         if ((current?.revision ?? null) !== expectedRevision) throw conflict();
+        // Confirm restore dependencies against the same snapshot as the replacement.
+        if (verifyLabelBytes || expectedRevision === null)
+          await assertStoredLabels(workspace, db, { verifyBytes: true, session });
+        await commitStagedReferences(db, session, prepared);
         if (current) {
           const updated = await heads(db).replaceOne(
             { _id: workspaceId, revision: expectedRevision! },
@@ -285,7 +317,13 @@ export async function writeMongoWorkspace({
         for (const key of entitySets)
           await updateRows(db, session, key, before?.workspace[key] ?? [], prepared[key] ?? []);
         await receipts(db).insertOne(
-          { _id: operationId, expectedRevision, requestDigest, revision },
+          {
+            _id: operationId,
+            expectedRevision,
+            requestDigest,
+            revision,
+            ...(verifyLabelBytes && { verifyLabelBytes }),
+          },
           { session },
         );
         return { workspace: prepared, revision, databaseScope: scope, migrationSourceDigest };

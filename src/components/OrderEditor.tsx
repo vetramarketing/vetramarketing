@@ -54,6 +54,7 @@ function newOrder(data: OrdersProps['data'], companyId: string): Order {
 const moneyInput = (satang: number) => (satang / 100).toFixed(2);
 
 export default function OrderEditor({
+  readOnly,
   data,
   companyId,
   update,
@@ -174,6 +175,7 @@ export default function OrderEditor({
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (readOnly) return;
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -355,7 +357,7 @@ export default function OrderEditor({
         </header>
         <div className={dialogStyles.body}>
           {draft.quantitySource && (
-            <fieldset className={s.formFieldset} disabled={busy}>
+            <fieldset className={s.formFieldset} disabled={busy || readOnly}>
               <section className={s.section}>
                 <h3>{draft.customerName}</h3>
                 <CalendarField
@@ -433,7 +435,7 @@ export default function OrderEditor({
             </fieldset>
           )}
           {!draft.quantitySource && (
-            <fieldset className={s.formFieldset} disabled={busy}>
+            <fieldset className={s.formFieldset} disabled={busy || readOnly}>
               {locked && (
                 <p className={s.note}>
                   {draft.shipment?.mode === 'training'
@@ -824,7 +826,7 @@ export default function OrderEditor({
             </p>
           )}
           <div className={p.footerActions}>
-            {original && !original.shipment && (
+            {!readOnly && original && !original.shipment && (
               <button
                 type="button"
                 disabled={busy}
@@ -841,7 +843,7 @@ export default function OrderEditor({
             <button type="button" disabled={busy} className={p.cancelButton} onClick={close}>
               {t('Cancel', 'ยกเลิก')}
             </button>
-            <button type="submit" disabled={busy} className={p.saveButton}>
+            <button type="submit" disabled={busy || readOnly} className={p.saveButton}>
               <Save size={18} />
               {busy ? t('Saving…', 'กำลังบันทึก…') : t('Save order', 'บันทึกออเดอร์')}
             </button>

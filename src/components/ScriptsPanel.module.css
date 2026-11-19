@@ -296,3 +296,7 @@
     justify-content: space-between;
   }
 }
+.readOnlyCode {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

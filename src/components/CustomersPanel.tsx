@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type RefObject,
 } from 'react';
 import {
   AlertTriangle,
@@ -87,6 +88,7 @@ const defaultSocialTypes = ['facebook', 'line', 'email', 'phone', 'custom'] as c
 const maxSocialLinks = 100;
 
 interface Props {
+  readOnly?: boolean;
   data: Workspace;
   companyId: string;
   update: (next: Workspace) => Promise<boolean>;
@@ -128,6 +130,7 @@ const lastContactFilterOptions = [
 ] as const;
 
 export default function CustomersPanel({
+  readOnly,
   data,
   companyId,
   update,
@@ -135,7 +138,8 @@ export default function CustomersPanel({
   notify,
   openCustomerId,
   onOpenHandled,
-}: Props) {
+  onEditorOpenChange,
+}: Props & { onEditorOpenChange: (open: boolean) => void }) {
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const searchPending = query !== deferredQuery;
@@ -147,8 +151,11 @@ export default function CustomersPanel({
   const [lastContactFilter, setLastContactFilter] = useState<LastContactFilter>('all');
   const [bangkokToday, setBangkokToday] = useState(bangkokCalendarNow);
   const [editing, setEditing] = useState<Customer | 'new' | null>(null);
+  const hasPendingCustomerEdits = useRef(false);
   const [history, setHistory] = useState<{ customerId: string; productId?: string } | null>(null);
   const [typesOpen, setTypesOpen] = useState(false);
+  const editorOpen = editing !== null || history !== null || typesOpen;
+  useLayoutEffect(() => onEditorOpenChange(editorOpen), [editorOpen, onEditorOpenChange]);
   const addRef = useRef<HTMLButtonElement>(null);
   const handledOpenId = useRef<string | null>(null);
   const products = useMemo(
@@ -310,7 +317,19 @@ export default function CustomersPanel({
     if (handledOpenId.current === openCustomerId) return;
     handledOpenId.current = openCustomerId;
     const customer = data.customers.find((item) => item.id === openCustomerId && !item.deletedAt);
-    if (customer) setEditing(structuredClone(customer));
+    if (
+      customer &&
+      editing &&
+      (editing === 'new' || editing.id !== customer.id) &&
+      hasPendingCustomerEdits.current
+    )
+      notify(
+        t(
+          'Save or close your open customer draft before opening another customer.',
+          'กรุณาบันทึกหรือปิดแบบร่างลูกค้าที่เปิดอยู่ก่อนเปิดลูกค้ารายอื่น',
+        ),
+      );
+    else if (customer) setEditing(structuredClone(customer));
     else
       notify(
         t(
@@ -319,7 +338,7 @@ export default function CustomersPanel({
         ),
       );
     onOpenHandled?.();
-  }, [openCustomerId, data.customers, onOpenHandled, notify, t]);
+  }, [openCustomerId, data.customers, editing, onOpenHandled, notify, t]);
 
   function closeEditor() {
     setEditing(null);
@@ -368,8 +387,12 @@ export default function CustomersPanel({
                 <button
                   type="button"
                   className={s.editButton}
-                  aria-label={`${t('Edit customer', 'แก้ไขข้อมูลลูกค้า')} — ${customer.name}`}
-                  title={t('Edit customer', 'แก้ไขข้อมูลลูกค้า')}
+                  aria-label={`${readOnly ? t('View customer', 'ดูข้อมูลลูกค้า') : t('Edit customer', 'แก้ไขข้อมูลลูกค้า')} — ${customer.name}`}
+                  title={
+                    readOnly
+                      ? t('View customer', 'ดูข้อมูลลูกค้า')
+                      : t('Edit customer', 'แก้ไขข้อมูลลูกค้า')
+                  }
                   onClick={() => setEditing(structuredClone(customer))}
                 >
                   <Pencil size={15} aria-hidden="true" />
@@ -490,7 +513,16 @@ export default function CustomersPanel({
           </tr>
         );
       }),
-    [visible, products, purchases, customersWithUnrecordedUnits, productId, t, bangkokToday],
+    [
+      visible,
+      products,
+      purchases,
+      customersWithUnrecordedUnits,
+      productId,
+      t,
+      bangkokToday,
+      readOnly,
+    ],
   );
 
   return (
@@ -506,6 +538,7 @@ export default function CustomersPanel({
               type="button"
               className={`${s.secondaryButton} ${list.action}`}
               onClick={() => setTypesOpen(true)}
+              disabled={readOnly}
             >
               <Settings2 size={18} />
               {t('Business types', 'ประเภทธุรกิจ')}
@@ -515,7 +548,7 @@ export default function CustomersPanel({
               type="button"
               className={`${s.primaryButton} ${list.action} ${list.primaryAction}`}
               onClick={() => setEditing('new')}
-              disabled={!data.companies.length}
+              disabled={readOnly || !data.companies.length}
             >
               <Plus size={19} />
               {t('Add customer', 'เพิ่มลูกค้า')}
@@ -778,6 +811,7 @@ export default function CustomersPanel({
       </section>
       {history && (
         <CustomerOrdersDialog
+          readOnly={readOnly}
           key={`orders:${history.customerId}`}
           data={data}
           customerId={history.customerId}
@@ -791,6 +825,8 @@ export default function CustomersPanel({
       )}
       {editing && (
         <CustomerEditor
+          readOnly={readOnly}
+          hasPendingEdits={hasPendingCustomerEdits}
           key={editing === 'new' ? 'new' : `customer:${editing.id}`}
           data={data}
           customer={editing === 'new' ? undefined : editing}
@@ -818,6 +854,8 @@ export default function CustomersPanel({
 }
 
 function CustomerEditor({
+  readOnly,
+  hasPendingEdits,
   data,
   customer,
   defaultCompanyId,
@@ -827,6 +865,7 @@ function CustomerEditor({
   onOpenOrders,
   onClose,
 }: Omit<Props, 'companyId' | 'openCustomerId' | 'onOpenHandled'> & {
+  hasPendingEdits: RefObject<boolean>;
   customer?: Customer;
   onOpenOrders: (customerId: string) => void;
   defaultCompanyId: string;
@@ -920,6 +959,9 @@ function CustomerEditor({
       });
   const hasOrder = orderLines.length > 0;
   const dirty = hasOrder || JSON.stringify(initial) !== JSON.stringify(draft);
+  useLayoutEffect(() => {
+    hasPendingEdits.current = dirty || busy;
+  }, [dirty, busy, hasPendingEdits]);
   const elapsed = draft.firstContactOn
     ? elapsedCalendarDuration(draft.firstContactOn, bangkokToday)
     : null;
@@ -1036,7 +1078,8 @@ function CustomerEditor({
     return '';
   }
   async function save(deleting = false) {
-    if (busyRef.current || closingRef.current || discardOpen || deleting !== deleteOpen) return;
+    if (readOnly || busyRef.current || closingRef.current || discardOpen || deleting !== deleteOpen)
+      return;
     const current = data.customers.find((item) => item.id === draft.id);
     if (!entityEditIsCurrent(baseline, current)) {
       setError(
@@ -1209,9 +1252,11 @@ function CustomerEditor({
           <div>
             <span className={post.eyebrow}>{t('CUSTOMER DETAILS', 'ข้อมูลลูกค้า')}</span>
             <h2 id={titleId}>
-              {customer
-                ? t('Edit customer', 'แก้ไขข้อมูลลูกค้า')
-                : t('Add customer', 'เพิ่มลูกค้า')}
+              {readOnly
+                ? t('Customer details', 'รายละเอียดลูกค้า')
+                : customer
+                  ? t('Edit customer', 'แก้ไขข้อมูลลูกค้า')
+                  : t('Add customer', 'เพิ่มลูกค้า')}
             </h2>
             <p>
               {t(
@@ -1231,7 +1276,7 @@ function CustomerEditor({
           </button>
         </header>
         <div className={s.editorBody}>
-          <fieldset className={s.editorFields} disabled={busy}>
+          <fieldset className={s.editorFields} disabled={busy || readOnly}>
             <legend className={s.srOnly}>{t('Customer details', 'ข้อมูลลูกค้า')}</legend>
             <section className={s.formSection}>
               <div className={s.formSectionHeading}>
@@ -1970,7 +2015,7 @@ function CustomerEditor({
           )}
         </div>
         <footer className={s.editorFooter}>
-          {baseline && (
+          {baseline && !readOnly && (
             <button
               type="button"
               className={post.deleteButton}
@@ -1993,7 +2038,7 @@ function CustomerEditor({
             >
               {t('Cancel', 'ยกเลิก')}
             </button>
-            <button type="submit" className={post.saveButton} disabled={busy}>
+            <button type="submit" className={post.saveButton} disabled={busy || readOnly}>
               <Check size={18} />
               {busy
                 ? t('Saving…', 'กำลังบันทึก…')

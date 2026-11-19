@@ -31,6 +31,9 @@
   align-items: center;
   flex-shrink: 0;
 }
+.groupImportAction[inert] {
+  opacity: 0.55;
+}
 .companyType {
   align-self: flex-start;
   padding: 0.3rem 0.55rem;
@@ -340,6 +343,13 @@
 .groupEditor {
   scroll-margin-top: 8rem;
 }
+.groupFields {
+  min-width: 0;
+  margin-inline: 0;
+  margin-bottom: 0;
+  padding: 0;
+  border: 0;
+}
 .eyebrow {
   display: block;
   font-size: var(--text-sm);
@@ -479,6 +489,31 @@
   background: var(--surface-subtle);
   color: var(--muted);
   border-radius: 0.65rem;
+}
+.filePicker {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+.filePickerActions,
+.filePreview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+.filePreview img {
+  width: 6rem;
+  height: 6rem;
+  border-radius: 0.55rem;
+  object-fit: contain;
+  background: var(--surface-subtle);
+}
+.filePreview > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .catalogFields {
   border: 0;
@@ -996,8 +1031,12 @@
   .catalogActions {
     width: 100%;
   }
-  .catalogActions > button {
+  .catalogActions > button,
+  .groupImportAction {
     flex: 1;
+  }
+  .groupImportAction > button {
+    width: 100%;
   }
   .formGrid {
     grid-template-columns: 1fr;

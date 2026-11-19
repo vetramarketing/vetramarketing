@@ -1,6 +1,13 @@
 # Cloudinary catalog images
 
-When the local workspace saves to MongoDB, its server migrates referenced product images and company logos to Cloudinary. This includes images on products in Trash. The catalog editors accept HTTPS image URLs. The ESHAN starter product uses the bundled PNG in `public/product`. Carrier PDFs contain delivery details and follow the private order-label storage workflow.
+The Products and Companies editors accept JPEG, PNG and WebP files when connected to MongoDB. Select a file to prepare and preview it in the browser. Save uploads the prepared image and then commits the catalog record. Existing HTTPS image URLs continue through the same verified Cloudinary storage workflow. Carrier PDFs follow the private order-label storage workflow.
+
+## File uploads and retries
+
+- The browser accepts still images up to 32 MiB and 50 megapixels. It preserves aspect ratio and transparency and prepares images up to 1,600 pixels on the longest edge for products or 512 pixels for logos.
+- The local API validates the file, assigns a scoped public ID, and verifies the result with Cloudinary. The MongoDB transaction records the image reference and marks the upload committed together.
+- A failed upload keeps the prepared image for retry. A failed record save can reuse the verified upload. The editor keeps the draft while either step is retried.
+- **Settings > Unused image uploads** removes abandoned staged uploads after an hour. Cleanup verifies recorded ownership and checks current references, including Trash, before removing eligible files. Committed uploads remain available for older backups.
 
 ## Server configuration
 

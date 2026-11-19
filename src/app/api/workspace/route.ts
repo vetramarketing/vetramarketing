@@ -1,11 +1,15 @@
 import 'server-only';
+import { MongoNetworkError, MongoServerSelectionError } from 'mongodb';
 import {
+  configuredWorkspaceScope,
   MongoWorkspaceError,
   readMongoWorkspace,
   workspaceDatabaseScope,
   writeMongoWorkspace,
 } from '@/lib/server/mongo-workspace';
 import { isLocalWorkspaceRequest } from '@/lib/server/workspace-request';
+import { StoredLabelIntegrityError } from '@/lib/server/mongo-labels';
+import { StageError } from '@/lib/server/staged-images';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,10 +17,32 @@ const json = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'private, no-store' } });
 
 function failure(error: unknown): Response {
+  if (error instanceof StoredLabelIntegrityError)
+    return json({ code: 'CARRIER_PDF_INTEGRITY', message: error.message }, 422);
+  if (error instanceof StageError) return json({ code: error.code }, error.status);
   if (error instanceof MongoWorkspaceError)
     return json(
       { code: error.code, ...(error.postIds && { postIds: error.postIds }) },
       error.status,
+    );
+  const code = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
+  const dnsUnavailable = [
+    'ENOTFOUND',
+    'EAI_AGAIN',
+    'ESERVFAIL',
+    'ETIMEOUT',
+    'ECONNREFUSED',
+  ].includes(String(code));
+  const selectionUnavailable =
+    error instanceof MongoServerSelectionError &&
+    ![13, 18, 8000].includes(Number(error.code)) &&
+    ![...(error.reason?.servers.values() ?? [])].some(
+      (server) => server.error && !(server.error instanceof MongoNetworkError),
+    );
+  if (error instanceof MongoNetworkError || selectionUnavailable || dnsUnavailable)
+    return json(
+      { code: 'WORKSPACE_SERVICE_UNAVAILABLE', databaseScope: configuredWorkspaceScope() },
+      503,
     );
   return json({ code: 'WORKSPACE_SERVICE_UNAVAILABLE' }, 503);
 }
@@ -84,6 +110,7 @@ export async function POST(request: Request) {
       workspace: body.workspace,
       expectedRevision: body.expectedRevision as string | null,
       operationId: body.operationId as string,
+      verifyLabelBytes: body.verifyLabelBytes === true,
     });
     return json({ configured: true, ...snapshot });
   } catch (error) {

@@ -31,6 +31,7 @@ export interface WorkspaceRepository {
     workspace: Workspace;
     expectedRevision: string;
     operationId: string;
+    verifyLabelBytes?: boolean;
   }): Promise<WorkspaceSnapshot>;
   recover(workspace: Workspace): Promise<WorkspaceSnapshot>;
   subscribe(listener: (snapshot: WorkspaceSnapshot | Error) => void): () => void;
