@@ -1,0 +1,3 @@
+id,title,content,platform,status,group,url
+qa-csv-roundtrip,QA CSV draft,"Import preview verification. ทดสอบภาษาไทย",facebook,draft,Coffee & Slow Mornings,
+qa-csv-invalid,Invalid link row,Must not be imported,facebook,draft,,javascript:alert(1)

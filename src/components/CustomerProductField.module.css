@@ -1,0 +1,125 @@
+.field {
+  container-type: inline-size;
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
+.fieldHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.65rem;
+  background: var(--surface-raised);
+  color: var(--link);
+  font: inherit;
+}
+.trigger svg {
+  flex-shrink: 0;
+}
+.quantityHint {
+  margin: 0 0 0.25rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+.selectedProducts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.selectedProduct {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface-subtle);
+}
+.selectedProduct[data-with-quantity] {
+  grid-template-columns: auto minmax(0, 1fr) 7rem auto;
+}
+.image {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--surface-raised);
+  color: var(--muted);
+}
+.image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.productCopy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.productCopy small {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--muted);
+}
+.quantity input {
+  font-variant-numeric: tabular-nums;
+}
+.remove {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--muted);
+}
+@container (max-width: 25rem) {
+  .selectedProduct[data-with-quantity] {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .selectedProduct[data-with-quantity] .productCopy {
+    grid-column: span 2;
+  }
+  .quantity {
+    grid-column: span 2;
+  }
+  .selectedProduct[data-with-quantity] .remove {
+    align-self: end;
+  }
+}
+@media (hover: hover) {
+  .trigger:hover:not(:disabled),
+  .remove:hover:not(:disabled) {
+    border-color: var(--blue);
+    color: var(--text);
+  }
+}

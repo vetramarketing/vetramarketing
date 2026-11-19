@@ -1,0 +1,105 @@
+.dialog {
+  width: min(26rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 1.25rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--background) 76%, transparent);
+  backdrop-filter: none;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.header h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface-raised);
+  color: var(--muted);
+  cursor: pointer;
+}
+.options {
+  display: grid;
+  gap: 0.6rem;
+}
+.search {
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.85rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.65rem;
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+}
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.option[aria-pressed='true'] {
+  border-color: var(--blue);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.optionCopy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.optionIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.optionIcon + .optionCopy {
+  flex: 1;
+}
+.option > svg {
+  flex-shrink: 0;
+}
+.optionCopy small {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: 1.35;
+}
+@media (hover: hover) {
+  .option:hover,
+  .close:hover {
+    border-color: var(--blue);
+    color: var(--text);
+  }
+}

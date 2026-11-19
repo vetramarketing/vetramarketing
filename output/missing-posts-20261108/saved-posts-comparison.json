@@ -1,0 +1,30 @@
+{
+  "savedPublishedPosts": 70,
+  "matchedTableRows": 67,
+  "savedPostsOutsideCopiedTable": [
+    {
+      "group": "อาหารฮาลาล ในกรุงเทพ และ ปริมณฑล",
+      "publishedBangkok": "09/10/2026, 16:21",
+      "viewers": 179,
+      "comments": 10,
+      "url": "https://www.facebook.com/groups/546003662963306/posts/2201650280731961/"
+    },
+    {
+      "group": "ขายสินค้า - อาหารฮาลาล Halal",
+      "publishedBangkok": "08/10/2026, 07:23",
+      "viewers": 137,
+      "comments": 10,
+      "url": "https://www.facebook.com/groups/2884417354969143/posts/28575113882139471/"
+    },
+    {
+      "group": "ตลาดมุสลิม-ซื้อขายสินค้าฮาลาล (สมาชิก 3.1 แสน)",
+      "publishedBangkok": "08/10/2026, 13:46",
+      "viewers": 324,
+      "comments": 10,
+      "url": "https://www.facebook.com/groups/431171997035894/posts/3752700861549641/"
+    }
+  ],
+  "savedMatchedPostsWithDateDifferences": 0,
+  "copyDateRange": "11 October–8 November 2026",
+  "explanation": "The earlier report listed source rows missing from saved records. This report checks saved published posts missing from the source table instead. Update counts exclude records already current; the current snapshot has 67 unchanged matches. The reported earlier count of 65 changes is not retained in this snapshot, so the identities of two presumed unchanged records cannot be proved from it."
+}

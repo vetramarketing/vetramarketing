@@ -1,0 +1,425 @@
+.dialog {
+  width: min(48rem, calc(100% - 2rem));
+  max-height: min(48rem, calc(100dvh - 3rem));
+  margin: min(10dvh, 5rem) auto auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 1.25rem;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1.75rem 6rem color-mix(in srgb, var(--background) 85%, transparent);
+  color-scheme: dark;
+}
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--background) 80%, transparent);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.4rem 0.65rem;
+  flex-shrink: 0;
+}
+.headingText,
+.headingTools {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.headingText {
+  min-width: 0;
+}
+.heading h2 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.searchMark {
+  display: inline-flex;
+  color: var(--link);
+}
+.headingTools > kbd {
+  white-space: nowrap;
+}
+.dialog kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 1.8rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 0.35rem;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+.closeButton,
+.clearButton {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 0.6rem;
+  color: var(--muted);
+  background: transparent;
+}
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0.5rem 1.4rem 0.8rem;
+  padding: 0.65rem 0.8rem 0.65rem 1rem;
+  min-height: 3.65rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.75rem;
+  background: var(--input);
+  color: var(--link);
+  flex-shrink: 0;
+}
+.searchBox:focus-within {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 12%, transparent);
+}
+.searchBox input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.15rem 0;
+  border: 0;
+  outline: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-lg);
+  line-height: 1.6;
+}
+.searchBox input:focus-visible {
+  outline: none;
+}
+.searchBox input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.searchBox input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.clearButton {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+.scope {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem 1rem;
+  padding: 0 1.5rem 1.1rem;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.scope > span:first-child {
+  color: var(--text-secondary);
+}
+.results {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 0.5rem;
+  padding: 0.2rem 0.65rem 0.7rem;
+  border-top: 1px solid var(--border);
+}
+.results:empty {
+  display: none;
+}
+.section {
+  padding-top: 0.8rem;
+}
+.section + .section {
+  padding-top: 1.1rem;
+}
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.85rem 0.5rem;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.sectionLabel > span {
+  color: var(--muted);
+  font-weight: 400;
+}
+.result {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 4.5rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 0.8rem;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.activeResult {
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
+}
+.resultIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+.createResult .resultIcon {
+  background: var(--accent-soft);
+  color: var(--link);
+  border-color: color-mix(in srgb, var(--link) 30%, var(--border));
+}
+.resultCopy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+.resultCopy > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.resultCopy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.resultMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.resultArrow {
+  color: var(--muted);
+}
+.activeResult .resultArrow {
+  color: var(--link);
+}
+.date {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+.status {
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+.draft {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+.planned {
+  color: var(--link);
+  background: var(--accent-soft);
+}
+.published {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.empty {
+  padding: 3.2rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+.empty > span {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: var(--surface-raised);
+  color: var(--link);
+  margin-bottom: 1.2rem;
+}
+.empty h3 {
+  font-size: var(--text-lg);
+  margin: 0 0 0.5rem;
+  color: var(--text);
+}
+.empty p {
+  margin: 0 0 1.25rem;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.8;
+}
+.empty button {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--link);
+  border-radius: 0.6rem;
+  padding: 0.65rem 1rem;
+  min-height: 2.75rem;
+  font: inherit;
+  font-size: var(--text-sm);
+}
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  padding: 0.85rem 1.4rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle);
+  flex-shrink: 0;
+}
+.shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+.shortcuts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.footerNote {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.dialog button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+@media (hover: hover) {
+  .result:hover {
+    background: var(--surface-raised);
+  }
+  .closeButton:hover,
+  .clearButton:hover {
+    background: var(--surface-raised);
+    color: var(--text);
+  }
+  .empty button:hover {
+    background: var(--accent-soft);
+    color: var(--link);
+  }
+}
+@media (max-width: 620px) {
+  .dialog {
+    margin-top: 1rem;
+    max-height: calc(100dvh - 2rem);
+    border-radius: 1rem;
+  }
+  .heading {
+    padding: 0.8rem 1rem 0.3rem;
+  }
+  .headingTools > kbd {
+    display: none;
+  }
+  .searchBox {
+    margin: 0.5rem 1rem 0.8rem;
+    gap: 0.65rem;
+  }
+  .searchBox input {
+    font-size: var(--text-base);
+  }
+  .scope {
+    padding-inline: 1rem;
+  }
+  .scope > span:last-child {
+    display: none;
+  }
+  .result {
+    gap: 0.65rem;
+    padding: 0.7rem 0.6rem;
+  }
+  .resultMeta {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+  }
+  .date,
+  .resultArrow {
+    display: none;
+  }
+  .resultIcon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  .footer {
+    padding: 0.8rem 1rem;
+  }
+  .footerNote {
+    display: none;
+  }
+  .shortcuts {
+    gap: 0.8rem;
+  }
+  .empty {
+    padding: 2.5rem 1rem;
+  }
+}
+@media (max-width: 390px) {
+  .dialog {
+    width: calc(100% - 1rem);
+  }
+  .resultMeta {
+    display: none;
+  }
+  .headingText {
+    gap: 0.5rem;
+  }
+  .searchMark {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result {
+    transition: none;
+  }
+}

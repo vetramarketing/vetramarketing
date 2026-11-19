@@ -1,0 +1,212 @@
+.editor[open] {
+  display: flex;
+  flex-direction: column;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.form > header {
+  flex-shrink: 0;
+}
+.form[hidden] {
+  display: none;
+}
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.body:focus-visible {
+  outline-offset: -2px;
+}
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin: 0;
+  padding: 1.5rem;
+  border: 0;
+  min-width: 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+.grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: var(--text-sm);
+  font-weight: 550;
+  min-width: 0;
+}
+.fullWidth {
+  grid-column: 1 / -1;
+}
+.grid input,
+.grid textarea {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.65rem;
+  background: var(--input);
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+.grid textarea {
+  resize: vertical;
+  min-height: 5.8rem;
+}
+.codeSection {
+  min-width: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.75rem;
+  background: var(--input);
+}
+.codeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.65rem 0.8rem;
+  background: var(--surface-subtle);
+  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 1px solid var(--border);
+}
+.codeHeader label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.codeHeader label svg {
+  color: var(--link);
+}
+.codeActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.code {
+  display: block;
+  width: 100%;
+  min-height: 20rem;
+  margin: 0;
+  padding: 1rem;
+  border: 0;
+  background: var(--input);
+  color: var(--text);
+  resize: vertical;
+  font-family: Consolas, 'Cascadia Code', monospace;
+  font-size: var(--text-base);
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+.code:focus-visible {
+  outline-offset: -3px;
+}
+.codeFooter {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 0.8rem;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.help {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  background: var(--surface);
+}
+.footerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.saveActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+.trashButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--danger);
+  border-radius: 0.6rem;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.error {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 0.6rem;
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) {
+  .trashButton:hover:not(:disabled) {
+    background: var(--danger);
+    color: var(--on-accent);
+  }
+}
+@media (min-width: 481px) {
+  .editor[open] {
+    width: min(72rem, calc(100% - 1.5rem));
+    height: calc(100dvh - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+  }
+}
+@media (max-width: 600px) {
+  .fields {
+    padding: 1rem;
+  }
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .footer {
+    padding: 0.8rem 1rem;
+  }
+  .footerRow > .trashButton,
+  .saveActions {
+    width: 100%;
+  }
+  .saveActions > button {
+    flex: 1;
+  }
+  .code {
+    min-height: 16rem;
+  }
+}

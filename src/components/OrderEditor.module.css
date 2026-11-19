@@ -1,0 +1,40 @@
+.editor {
+  width: min(64rem, calc(100% - 3rem));
+}
+.form:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 3.25rem);
+}
+.body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 1.5rem 2rem;
+}
+.body section {
+  margin: 0;
+}
+@media (max-width: 850px) {
+  .editor {
+    width: calc(100% - 1.5rem);
+  }
+  .form:not([hidden]) {
+    max-height: calc(100dvh - 1.75rem);
+  }
+  .body {
+    padding: 1rem;
+  }
+}
+@media (max-width: 480px) {
+  .editor {
+    width: 100%;
+  }
+  .form:not([hidden]) {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+  .body {
+    flex: 1;
+  }
+}

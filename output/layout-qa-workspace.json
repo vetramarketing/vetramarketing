@@ -1,0 +1,135 @@
+{
+  "version": 8,
+  "sample": false,
+  "companies": [
+    {
+      "id": "vetra",
+      "name": "VETRA STORE",
+      "businessTypeId": "retail",
+      "logoImageUrl": "",
+      "ownerName": "",
+      "sortOrder": 0,
+      "initials": "V",
+      "color": "#263b4b",
+      "description": "A thoughtful everyday."
+    }
+  ],
+  "businessTypes": [
+    {
+      "id": "retail",
+      "name": "Store / retail",
+      "nameTh": "ร้านค้า / ค้าปลีก",
+      "customerSections": [
+        "social"
+      ],
+      "customerFields": [],
+      "sortOrder": 0
+    },
+    {
+      "id": "software-house",
+      "name": "Software house",
+      "nameTh": "ซอฟต์แวร์เฮาส์",
+      "customerSections": [
+        "domains",
+        "github"
+      ],
+      "customerFields": [],
+      "sortOrder": 1
+    },
+    {
+      "id": "other",
+      "name": "Other business",
+      "nameTh": "ธุรกิจอื่น",
+      "customerSections": [],
+      "customerFields": [],
+      "sortOrder": 2
+    }
+  ],
+  "customers": [
+    {
+      "id": "qa-one",
+      "companyId": "vetra",
+      "name": "QA — ลูกค้าสำหรับตรวจสอบรูปแบบที่มีชื่อยาว Long customer name",
+      "organization": "QA Coffee House",
+      "contactName": "QA Contact",
+      "email": "qa@example.com",
+      "phone": "+66 (81) 234-5678",
+      "website": "https://example.com",
+      "firstContactOn": "2024-02-29",
+      "lastContactOn": "2026-10-28",
+      "notes": "Disposable layout verification fixture",
+      "socialLinks": [
+        {
+          "id": "line",
+          "label": "Line",
+          "url": "https://line.me/R/ti/p/@qa-example",
+          "type": "line"
+        },
+        {
+          "id": "email",
+          "label": "Email",
+          "url": "qa@example.com",
+          "type": "email"
+        }
+      ],
+      "productIds": [
+        "honey",
+        "gift"
+      ],
+      "productQuantities": {
+        "honey": 0,
+        "gift": 1234
+      },
+      "domains": [],
+      "githubAccounts": [],
+      "fieldValues": {},
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-10-29T00:00:00Z"
+    },
+    {
+      "id": "qa-two",
+      "companyId": "vetra",
+      "name": "QA — Missing details",
+      "organization": "QA Coffee House",
+      "contactName": "QA Contact",
+      "email": "qa@example.com",
+      "phone": "+66 (81) 234-5678",
+      "website": "https://example.com",
+      "firstContactOn": "",
+      "lastContactOn": "",
+      "notes": "Disposable layout verification fixture",
+      "socialLinks": [],
+      "productIds": [],
+      "productQuantities": {},
+      "domains": [],
+      "githubAccounts": [],
+      "fieldValues": {},
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-10-29T00:00:00Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "honey",
+      "name": "น้ำผึ้งดอกกาแฟ ESHAN 320g",
+      "imageUrl": "",
+      "companyIds": [
+        "vetra"
+      ],
+      "sortOrder": 0
+    },
+    {
+      "id": "gift",
+      "name": "Gift box ชุดของขวัญสำหรับลูกค้า",
+      "imageUrl": "",
+      "companyIds": [
+        "vetra"
+      ],
+      "sortOrder": 1,
+      "deletedAt": "2026-10-29T00:00:00Z"
+    }
+  ],
+  "groups": [],
+  "destinations": [],
+  "posts": []
+}

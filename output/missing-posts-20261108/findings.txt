@@ -1,0 +1,26 @@
+Facebook post comparison — 8 November 2026
+Source: supplied content-library table, 157 rows, continuous indexes 0–156.
+Compared against the current localhost workspace snapshot, including Trash for diagnosis.
+Scope of the five entries below: published group rows with more than one viewer and no matching saved record. Other one-viewer, pending, Page and Story rows were not classified as these five.
+Times are the source Thai/Bangkok publication times. Year 2026 is the comparison assumption.
+No saved posts were changed. These rows have no direct post permalink in the supplied HTML.
+
+Source row 71: กลุ่มร้านกาแฟ ร้านอาหาร คาเฟ่ • 23 ต.ค. เวลา 18:21
+Viewers: 20; Comments: 0; Views: 23
+Separate source row from row 74 (23 Oct 18:22, 19 viewers, 10 comments), which matches the saved post. Do not overwrite that post with row 71.
+
+Source row 77: ซื้อขายนนทบุรี • 12 ต.ค. เวลา 18:42
+Viewers: 18; Comments: 5; Views: 46
+Saved same-group posts are dated 24 Oct and 15 Oct; no saved entry matches 12 Oct 18:42.
+
+Source row 92: ฮาลาลเชียงใหม่ • 29 ต.ค. เวลา 10:31
+Viewers: 9; Comments: 0; Views: 20
+Only an undated, pending, trashed placeholder exists for this group; no exact post identity is available.
+
+Source row 104: ตลาดอาหารฮาลาล แห่งประเทศไทย • 6 พ.ย. เวลา 11:03
+Viewers: 5; Comments: 0; Views: 13
+Only an undated trashed placeholder exists; its original date label is 11 Oct 23:29, not this source date.
+
+Source row 109: หาของกินย่านปทุมธานี • 2 พ.ย. เวลา 23:53
+Viewers: 3; Comments: 0; Views: 7
+Only an undated trashed placeholder exists; its original date label is 15 Oct 11:49, not this source date.

@@ -1,0 +1,1468 @@
+{
+  "sourceRows": 157,
+  "changes": [],
+  "unchanged": [
+    {
+      "row": 4,
+      "label": "กลุ่มชาวลำลูกกา",
+      "postId": "provided-1441014217530766",
+      "oldViewers": 1632,
+      "newViewers": 1632,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-11T03:19:00.000Z",
+      "newPublishedAt": "2026-10-11T03:19:00.000Z"
+    },
+    {
+      "row": 5,
+      "label": "เมนูขายดีตลาดนัด",
+      "postId": "provided-1656569912710418",
+      "oldViewers": 1518,
+      "newViewers": 1518,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T11:52:00.000Z",
+      "newPublishedAt": "2026-10-12T11:52:00.000Z"
+    },
+    {
+      "row": 6,
+      "label": "ของอร่อย อมตะ ดอนหัวฬ่อ นาป่า ท้องคุ้ง เดลิเวอรี่ฟรี",
+      "postId": "provided-link-2052047528787968",
+      "oldViewers": 1140,
+      "newViewers": 1140,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-15T06:21:00.000Z",
+      "newPublishedAt": "2026-10-15T06:21:00.000Z"
+    },
+    {
+      "row": 7,
+      "label": "ซื้อขาย ตามหาของกิน,ของใช้ พระราม3-สาธุประดิษฐ์-ถนนจันทน์",
+      "postId": "provided-2512366006259231",
+      "oldViewers": 1071,
+      "newViewers": 1071,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T12:11:00.000Z",
+      "newPublishedAt": "2026-10-12T12:11:00.000Z"
+    },
+    {
+      "row": 8,
+      "label": "ขนมขายส่ง",
+      "postId": "provided-29243978951875485",
+      "oldViewers": 1033,
+      "newViewers": 1033,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T12:34:00.000Z",
+      "newPublishedAt": "2026-10-12T12:34:00.000Z"
+    },
+    {
+      "row": 9,
+      "label": "ตลาด หนองเสือ คลองหลวง",
+      "postId": "provided-1874245667096672",
+      "oldViewers": 910,
+      "newViewers": 910,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-13T14:51:00.000Z",
+      "newPublishedAt": "2026-10-13T14:51:00.000Z"
+    },
+    {
+      "row": 10,
+      "label": "ตลาดขายของออนไลน์ กลุ่มซื้อขายสินค้าราคากันเอง",
+      "postId": "provided-link-2809958519419931",
+      "oldViewers": 428,
+      "newViewers": 428,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T12:18:00.000Z",
+      "newPublishedAt": "2026-10-12T12:18:00.000Z"
+    },
+    {
+      "row": 11,
+      "label": "ตลาด หนองเสือ คลองหลวง",
+      "postId": "dfeff117-040a-4c5f-ac8f-6623d4185c0c",
+      "oldViewers": 414,
+      "newViewers": 414,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-18T08:22:00.000Z",
+      "newPublishedAt": "2026-10-18T08:22:00.000Z"
+    },
+    {
+      "row": 12,
+      "label": "ฅนชงชา ซื้อ-ขายอุปกรณ์ วัตถุดิบเกี่ยวกับ ชา กาแฟ น้ำปั่น",
+      "postId": "provided-link-4440010186272533",
+      "oldViewers": 316,
+      "newViewers": 316,
+      "oldCommentCount": 8,
+      "newCommentCount": 8,
+      "oldPublishedAt": "2026-10-17T09:49:00.000Z",
+      "newPublishedAt": "2026-10-17T09:49:00.000Z"
+    },
+    {
+      "row": 13,
+      "label": "ปราจีนเดลิเวอรี่(เฉพาะซื้อขายอาหารเท่านั้น)",
+      "postId": "provided-2369379663896420",
+      "oldViewers": 306,
+      "newViewers": 306,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T12:14:00.000Z",
+      "newPublishedAt": "2026-10-12T12:14:00.000Z"
+    },
+    {
+      "row": 14,
+      "label": "ของกินและขนมวางร้านกาแฟ/ร้านขายของฝาก ปลีก-ส่ง",
+      "postId": "provided-link-29012913545001531",
+      "oldViewers": 261,
+      "newViewers": 261,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-15T06:40:00.000Z",
+      "newPublishedAt": "2026-10-15T06:40:00.000Z"
+    },
+    {
+      "row": 15,
+      "label": "ไอเดียตกแต่งร้านอาหาร ร้านกาแฟ ร้านขนม คาเฟ่",
+      "postId": "provided-1658718072534289",
+      "oldViewers": 248,
+      "newViewers": 248,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T12:49:00.000Z",
+      "newPublishedAt": "2026-10-12T12:49:00.000Z"
+    },
+    {
+      "row": 16,
+      "label": "ชมรมคนรักอาหาร (เรื่องกินขอให้บอก)",
+      "postId": "provided-2029544397712888",
+      "oldViewers": 229,
+      "newViewers": 229,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T12:23:00.000Z",
+      "newPublishedAt": "2026-10-12T12:23:00.000Z"
+    },
+    {
+      "row": 17,
+      "label": "เมนูอาหาร",
+      "postId": "1c520d98-f7fe-47a7-b516-295ab0f646cc",
+      "oldViewers": 219,
+      "newViewers": 219,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-18T13:30:00.000Z",
+      "newPublishedAt": "2026-10-18T13:30:00.000Z"
+    },
+    {
+      "row": 18,
+      "label": "ของกินกรุงเทพ",
+      "postId": "provided-3674543759380459",
+      "oldViewers": 212,
+      "newViewers": 212,
+      "oldCommentCount": 13,
+      "newCommentCount": 13,
+      "oldPublishedAt": "2026-10-15T06:24:00.000Z",
+      "newPublishedAt": "2026-10-15T06:24:00.000Z"
+    },
+    {
+      "row": 19,
+      "label": "กลุ่มตลาดนัดออนไลน์ โพสซื้อ - ขาย สินค้าฟรีประกาศฟรี หางานฟรีทั่วไทย",
+      "postId": "provided-link-29211138435242431",
+      "oldViewers": 165,
+      "newViewers": 165,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T11:34:00.000Z",
+      "newPublishedAt": "2026-10-12T11:34:00.000Z"
+    },
+    {
+      "row": 20,
+      "label": "ร้านอร่อยบอกต่อ 🍛🍣",
+      "postId": "provided-link-3036384016702241",
+      "oldViewers": 159,
+      "newViewers": 159,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-15T05:27:00.000Z",
+      "newPublishedAt": "2026-10-15T05:27:00.000Z"
+    },
+    {
+      "row": 21,
+      "label": "ซื้อ-ขาย อุปกรณ์ และ วัตถุดิบ เกี่ยวกับเครื่องดื่ม ร้านชา - กาแฟ",
+      "postId": "162bf14d-5093-45a3-8cd7-c12a4ddf8f77",
+      "oldViewers": 156,
+      "newViewers": 156,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-10-24T11:43:00.000Z",
+      "newPublishedAt": "2026-10-24T11:43:00.000Z"
+    },
+    {
+      "row": 22,
+      "label": "ซื้อขายนนทบุรี",
+      "postId": "6272cdb4-7bc2-42ab-8e4d-91340b1ef99e",
+      "oldViewers": 138,
+      "newViewers": 138,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-10-24T11:59:00.000Z",
+      "newPublishedAt": "2026-10-24T11:59:00.000Z"
+    },
+    {
+      "row": 23,
+      "label": "ร้านอาหารฮาลาลภูเก็ต",
+      "postId": "provided-1774948773626109",
+      "oldViewers": 128,
+      "newViewers": 128,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-11T17:23:00.000Z",
+      "newPublishedAt": "2026-10-11T17:23:00.000Z"
+    },
+    {
+      "row": 24,
+      "label": "ของอร่อยพื้นที่ราษฎร์บูรณะ-ทุ่งครุ",
+      "postId": "provided-link-1878707033482400",
+      "oldViewers": 124,
+      "newViewers": 124,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-15T04:52:00.000Z",
+      "newPublishedAt": "2026-10-15T04:52:00.000Z"
+    },
+    {
+      "row": 26,
+      "label": "ตลาดฮาลาล",
+      "postId": "provided-2942965846067270",
+      "oldViewers": 119,
+      "newViewers": 119,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-11T17:07:00.000Z",
+      "newPublishedAt": "2026-10-11T17:07:00.000Z"
+    },
+    {
+      "row": 27,
+      "label": "กลุ่มขายอาหารเฉพาะของกิน",
+      "postId": "5780155e-97bb-4307-a49b-ed1efaa71831",
+      "oldViewers": 116,
+      "newViewers": 116,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-10-25T03:54:00.000Z",
+      "newPublishedAt": "2026-10-25T03:54:00.000Z"
+    },
+    {
+      "row": 28,
+      "label": "ของอร่อย@ประจันตคาม",
+      "postId": "provided-link-1759054515176485",
+      "oldViewers": 116,
+      "newViewers": 116,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-15T11:19:00.000Z",
+      "newPublishedAt": "2026-10-15T11:19:00.000Z"
+    },
+    {
+      "row": 29,
+      "label": "ซื้อขายตลาดสี่มุมเมือง ตลาดไท",
+      "postId": "provided-1645909573871254",
+      "oldViewers": 114,
+      "newViewers": 114,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-10-12T12:24:00.000Z",
+      "newPublishedAt": "2026-10-12T12:24:00.000Z"
+    },
+    {
+      "row": 30,
+      "label": "คนรักอาหาร",
+      "postId": "5d7702ef-0c9b-46e6-8269-58e4c145d935",
+      "oldViewers": 112,
+      "newViewers": 112,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-10-24T11:51:00.000Z",
+      "newPublishedAt": "2026-10-24T11:51:00.000Z"
+    },
+    {
+      "row": 31,
+      "label": "ของอร่อยรอบเมืองปทุมธานี",
+      "postId": "provided-link-1690802745801710",
+      "oldViewers": 111,
+      "newViewers": 111,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-15T05:07:00.000Z",
+      "newPublishedAt": "2026-10-15T05:07:00.000Z"
+    },
+    {
+      "row": 32,
+      "label": "มุสลิมออนไลน์สินค้าฮาลาล โพสขายฟรี",
+      "postId": "provided-28757854080531207",
+      "oldViewers": 108,
+      "newViewers": 108,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-11T16:28:00.000Z",
+      "newPublishedAt": "2026-10-11T16:28:00.000Z"
+    },
+    {
+      "row": 34,
+      "label": "Phuket Halal Food ของกินฮาลาลภูเก็ต",
+      "postId": "provided-27653901790952170",
+      "oldViewers": 94,
+      "newViewers": 94,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-13T10:20:00.000Z",
+      "newPublishedAt": "2026-10-13T10:20:00.000Z"
+    },
+    {
+      "row": 37,
+      "label": "รีวิวคาเฟ่ แนะนำร้านกาแฟ ฝากร้าน แบ่งปันสูตร กาแฟ ชานม สมูทตี้ เครื่องดื่ม",
+      "postId": "provided-link-3270755549786315",
+      "oldViewers": 83,
+      "newViewers": 83,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T13:23:00.000Z",
+      "newPublishedAt": "2026-10-12T13:23:00.000Z"
+    },
+    {
+      "row": 39,
+      "label": "กลุ่มซื้อขายของกินออนไลน์",
+      "postId": "provided-link-4069819549993345",
+      "oldViewers": 82,
+      "newViewers": 82,
+      "oldCommentCount": 11,
+      "newCommentCount": 11,
+      "oldPublishedAt": "2026-10-12T11:22:00.000Z",
+      "newPublishedAt": "2026-10-12T11:22:00.000Z"
+    },
+    {
+      "row": 40,
+      "label": "อาหาร การกิน",
+      "postId": "provided-link-2184344785841380",
+      "oldViewers": 80,
+      "newViewers": 80,
+      "oldCommentCount": 12,
+      "newCommentCount": 12,
+      "oldPublishedAt": "2026-10-12T12:12:00.000Z",
+      "newPublishedAt": "2026-10-12T12:12:00.000Z"
+    },
+    {
+      "row": 41,
+      "label": "ซื้อ-ขายอาหารและการกิน",
+      "postId": "473eba69-3daa-495f-bb30-2d89d71fad61",
+      "oldViewers": 78,
+      "newViewers": 78,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-10-24T11:34:00.000Z",
+      "newPublishedAt": "2026-10-24T11:34:00.000Z"
+    },
+    {
+      "row": 43,
+      "label": "กลุ่มอาหารเพื่อสุขภาพ • เมื่อวานนี้ เวลา 13:17",
+      "postId": "bc9ce079-f623-4a88-b83c-d23f801662ae",
+      "oldViewers": 74,
+      "newViewers": 74,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T06:17:00.000Z",
+      "newPublishedAt": "2026-11-07T06:17:00.000Z"
+    },
+    {
+      "row": 46,
+      "label": "กลุ่มซื้อขายของกินปทุมธานี",
+      "postId": "provided-link-1822113055698644",
+      "oldViewers": 72,
+      "newViewers": 72,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T11:56:00.000Z",
+      "newPublishedAt": "2026-10-12T11:56:00.000Z"
+    },
+    {
+      "row": 49,
+      "label": "กลุ่มอาหารเพื่อสุขภาพทำเอง • เมื่อวานนี้ เวลา 11:50",
+      "postId": "7663f95d-f733-43bc-82e3-3dedc9115a25",
+      "oldViewers": 65,
+      "newViewers": 65,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:50:00.000Z",
+      "newPublishedAt": "2026-11-07T04:50:00.000Z"
+    },
+    {
+      "row": 50,
+      "label": "กลุ่ม \"อาหารฮาลาลออนไลน์ คลอง1\"",
+      "postId": "provided-1595831024886454",
+      "oldViewers": 62,
+      "newViewers": 62,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-11T17:16:00.000Z",
+      "newPublishedAt": "2026-10-11T17:16:00.000Z"
+    },
+    {
+      "row": 51,
+      "label": "ทุ่งครุฮาลาล(ขายได้ทุกอย่างที่ฮาลาล)",
+      "postId": "provided-meta-row-101",
+      "oldViewers": 61,
+      "newViewers": 61,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-21T00:23:00.000Z",
+      "newPublishedAt": "2026-10-21T00:23:00.000Z"
+    },
+    {
+      "row": 52,
+      "label": "ร้านอาหารฮาลาลทั่วไทย",
+      "postId": "provided-link-4566864506866043",
+      "oldViewers": 60,
+      "newViewers": 60,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-11T17:02:00.000Z",
+      "newPublishedAt": "2026-10-11T17:02:00.000Z"
+    },
+    {
+      "row": 53,
+      "label": "ซื้อ-ขาย สินค้าฮาลาล",
+      "postId": "provided-2332261127524925",
+      "oldViewers": 60,
+      "newViewers": 60,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-11T16:50:00.000Z",
+      "newPublishedAt": "2026-10-11T16:50:00.000Z"
+    },
+    {
+      "row": 54,
+      "label": "กลุ่มสูงวัยเจอรักแท้ • เมื่อวานนี้ เวลา 12:40",
+      "postId": "0a21ea67-738b-41ae-b7bd-b54b390c39d5",
+      "oldViewers": 56,
+      "newViewers": 56,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T05:40:00.000Z",
+      "newPublishedAt": "2026-11-07T05:40:00.000Z"
+    },
+    {
+      "row": 55,
+      "label": "มหาชัยรวมของอร่อย🍖🍗🍤ส่งเดลิเวอรี่🚚ส่งถึงที่สมุทรสาคร",
+      "postId": "73264c99-fb0e-4458-8daf-ff501a9d15aa",
+      "oldViewers": 53,
+      "newViewers": 53,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-10-25T05:23:00.000Z",
+      "newPublishedAt": "2026-10-25T05:23:00.000Z"
+    },
+    {
+      "row": 56,
+      "label": "กลุ่มซื้อขายน้ำผึ้งราคาปรีก-ส่ง • เมื่อวานนี้ เวลา 11:10",
+      "postId": "c6a240d5-cea7-4a94-8d60-397c2ec6fc89",
+      "oldViewers": 51,
+      "newViewers": 51,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:10:00.000Z",
+      "newPublishedAt": "2026-11-07T04:10:00.000Z"
+    },
+    {
+      "row": 59,
+      "label": "ของกิน ของใช้ #ส่งทั่วไทย",
+      "postId": "provided-link-29186089511027971",
+      "oldViewers": 41,
+      "newViewers": 41,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-15T11:24:00.000Z",
+      "newPublishedAt": "2026-10-15T11:24:00.000Z"
+    },
+    {
+      "row": 60,
+      "label": "ขายอาหาร",
+      "postId": "provided-link-2963395140700910",
+      "oldViewers": 41,
+      "newViewers": 41,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T11:48:00.000Z",
+      "newPublishedAt": "2026-10-12T11:48:00.000Z"
+    },
+    {
+      "row": 64,
+      "label": "น้ำผึ้งป่าพรานบ้านนอก • เมื่อวานนี้ เวลา 11:28",
+      "postId": "242cafbe-ceda-4874-ad5a-c0b47a2ac6dc",
+      "oldViewers": 30,
+      "newViewers": 30,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:28:00.000Z",
+      "newPublishedAt": "2026-11-07T04:28:00.000Z"
+    },
+    {
+      "row": 65,
+      "label": "รวมร้านฮาลาล@พัทยา",
+      "postId": "provided-27604093915933159",
+      "oldViewers": 28,
+      "newViewers": 28,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-13T01:36:00.000Z",
+      "newPublishedAt": "2026-10-13T01:36:00.000Z"
+    },
+    {
+      "row": 66,
+      "label": "ขนมราคาส่ง",
+      "postId": "provided-2256016228291626",
+      "oldViewers": 27,
+      "newViewers": 27,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-12T12:36:00.000Z",
+      "newPublishedAt": "2026-10-12T12:36:00.000Z"
+    },
+    {
+      "row": 67,
+      "label": "คนหาผึ้ง • เมื่อวานนี้ เวลา 11:38",
+      "postId": "7e1eb8eb-3cad-4500-9f38-8786f6970254",
+      "oldViewers": 25,
+      "newViewers": 25,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:38:00.000Z",
+      "newPublishedAt": "2026-11-07T04:38:00.000Z"
+    },
+    {
+      "row": 69,
+      "label": "กลุ่มคนรักสุขภาพและความงาม • เมื่อวานนี้ เวลา 12:01",
+      "postId": "2c9e6d4b-f84b-4603-8542-1681d0102303",
+      "oldViewers": 20,
+      "newViewers": 20,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T05:01:00.000Z",
+      "newPublishedAt": "2026-11-07T05:01:00.000Z"
+    },
+    {
+      "row": 70,
+      "label": "ชมรมคนรักผึ้งสำหรับคนชอบการศึกษาเรียนรู้🐝🐝 • เมื่อวานนี้ เวลา 11:40",
+      "postId": "5e0748a9-ad1b-40ee-ac8c-26a4f853852a",
+      "oldViewers": 20,
+      "newViewers": 20,
+      "oldCommentCount": 0,
+      "newCommentCount": 0,
+      "oldPublishedAt": "2026-11-07T04:40:00.000Z",
+      "newPublishedAt": "2026-11-07T04:40:00.000Z"
+    },
+    {
+      "row": 73,
+      "label": "คนรักอาหาร เมนูเพื่อสุขภาพ • เมื่อวานนี้ เวลา 11:56",
+      "postId": "a2ab9f8f-13e1-42ed-8de2-710d748295a1",
+      "oldViewers": 19,
+      "newViewers": 19,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:56:00.000Z",
+      "newPublishedAt": "2026-11-07T04:56:00.000Z"
+    },
+    {
+      "row": 74,
+      "label": "กลุ่มร้านกาแฟ ร้านอาหาร คาเฟ่",
+      "postId": "beaeef15-b79a-4425-8be9-fcbe671ceba3",
+      "oldViewers": 19,
+      "newViewers": 19,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-10-23T11:22:00.000Z",
+      "newPublishedAt": "2026-10-23T11:22:00.000Z"
+    },
+    {
+      "row": 78,
+      "label": "ฅนชงชา ซื้อ-ขายอุปกรณ์ วัตถุดิบเกี่ยวกับ ชา กาแฟ น้ำปั่น",
+      "postId": "0a154a52-f7fc-4d2d-afe3-ea33bfc91481",
+      "oldViewers": 15,
+      "newViewers": 15,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-10-27T14:58:00.000Z",
+      "newPublishedAt": "2026-10-27T14:58:00.000Z"
+    },
+    {
+      "row": 79,
+      "label": "ขายออนไลน์ อาหารเสริมเพื่อสุขภาพ • เมื่อวานนี้ เวลา 12:10",
+      "postId": "5dc91694-112d-4a3f-afdb-9286d0e55317",
+      "oldViewers": 14,
+      "newViewers": 14,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T05:10:00.000Z",
+      "newPublishedAt": "2026-11-07T05:10:00.000Z"
+    },
+    {
+      "row": 80,
+      "label": "อาหารคลีนเพื่อสุขภาพ • เมื่อวานนี้ เวลา 11:59",
+      "postId": "fae414ba-63c3-46f7-a089-0085310e9f69",
+      "oldViewers": 14,
+      "newViewers": 14,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:59:00.000Z",
+      "newPublishedAt": "2026-11-07T04:59:00.000Z"
+    },
+    {
+      "row": 81,
+      "label": "เพื่อนคุย วัยเกษียณ50-60 • เมื่อวานนี้ เวลา 12:54",
+      "postId": "8263c8e8-72b9-45e0-a87c-1abb18e85a91",
+      "oldViewers": 13,
+      "newViewers": 13,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T05:54:00.000Z",
+      "newPublishedAt": "2026-11-07T05:54:00.000Z"
+    },
+    {
+      "row": 82,
+      "label": "เมนูอาหารคลีน อาหารสุขภาพ • เมื่อวานนี้ เวลา 12:10",
+      "postId": "01537244-5955-4558-9641-14cb8cb2ed9f",
+      "oldViewers": 12,
+      "newViewers": 12,
+      "oldCommentCount": 8,
+      "newCommentCount": 8,
+      "oldPublishedAt": "2026-11-07T05:10:00.000Z",
+      "newPublishedAt": "2026-11-07T05:10:00.000Z"
+    },
+    {
+      "row": 83,
+      "label": "ซื้อขายของกินฮาลาล อ่อนนุช พัฒนาการ",
+      "postId": "32e1fdc5-264e-4ac0-aa88-4e3faa69cf8b",
+      "oldViewers": 11,
+      "newViewers": 11,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-10-24T07:14:00.000Z",
+      "newPublishedAt": "2026-10-24T07:14:00.000Z"
+    },
+    {
+      "row": 86,
+      "label": "ชุมชนเพื่อนสูงวัยคุยกัน ทุกวัน • เมื่อวานนี้ เวลา 12:50",
+      "postId": "ed4371d1-27d0-4b75-934c-df8572ac94d1",
+      "oldViewers": 10,
+      "newViewers": 10,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T05:50:00.000Z",
+      "newPublishedAt": "2026-11-07T05:50:00.000Z"
+    },
+    {
+      "row": 90,
+      "label": "🐝น้ำผึ้งชันโรงแท้ (stingless honey bee farms)🐝 • เมื่อวานนี้ เวลา 11:23",
+      "postId": "14d1e98a-3c60-478b-b3a7-6e9d7906bb8c",
+      "oldViewers": 9,
+      "newViewers": 9,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:23:00.000Z",
+      "newPublishedAt": "2026-11-07T04:23:00.000Z"
+    },
+    {
+      "row": 91,
+      "label": "คนขายรังผึ้งอ่อนและน้ำผึ้ง • เมื่อวานนี้ เวลา 11:20",
+      "postId": "5ff1d70b-b51c-46ad-a32b-4e967367eaf6",
+      "oldViewers": 9,
+      "newViewers": 9,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:20:00.000Z",
+      "newPublishedAt": "2026-11-07T04:20:00.000Z"
+    },
+    {
+      "row": 94,
+      "label": "กลุ่มชื้อ-ขายน้ำผึ้งโพรงป่าของแท้100% (เชิงดอยน้ำผึ้งป่า) จ.เชียงราย • เมื่อวานนี้ เวลา 11:33",
+      "postId": "22961b36-fcbf-46ca-8096-858cd1bf00e7",
+      "oldViewers": 8,
+      "newViewers": 8,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:33:00.000Z",
+      "newPublishedAt": "2026-11-07T04:33:00.000Z"
+    },
+    {
+      "row": 100,
+      "label": "รุ่นใหญ่วัยเกษียณหาเพื่อนทุกเพศทุกวัย • เมื่อวานนี้ เวลา 13:06",
+      "postId": "304562f6-fdfa-4b19-804e-80920dc64e89",
+      "oldViewers": 6,
+      "newViewers": 6,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T06:06:00.000Z",
+      "newPublishedAt": "2026-11-07T06:06:00.000Z"
+    },
+    {
+      "row": 101,
+      "label": "น้ำผึ้งป่าแท้1OO% 🐝🍯 • เมื่อวานนี้ เวลา 11:32",
+      "postId": "28e10478-bd0e-4de8-a517-ff14562b6493",
+      "oldViewers": 6,
+      "newViewers": 6,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:32:00.000Z",
+      "newPublishedAt": "2026-11-07T04:32:00.000Z"
+    },
+    {
+      "row": 102,
+      "label": "ขายน้ำผึ้งป่าธรรมชาติแท้ • เมื่อวานนี้ เวลา 11:24",
+      "postId": "097dc527-a8b5-4b40-9427-b79ea00f6fbf",
+      "oldViewers": 6,
+      "newViewers": 6,
+      "oldCommentCount": 9,
+      "newCommentCount": 9,
+      "oldPublishedAt": "2026-11-07T04:24:00.000Z",
+      "newPublishedAt": "2026-11-07T04:24:00.000Z"
+    },
+    {
+      "row": 108,
+      "label": "น้ำผึ้งป่า น้ำผึ้งชันโรง ของแท้จากธรรมชาติ Raw Honey Thailand • เมื่อวานนี้ เวลา 11:44",
+      "postId": "57ed92e9-6ecb-425c-b50a-8c8b3875abbc",
+      "oldViewers": 4,
+      "newViewers": 4,
+      "oldCommentCount": 10,
+      "newCommentCount": 10,
+      "oldPublishedAt": "2026-11-07T04:44:00.000Z",
+      "newPublishedAt": "2026-11-07T04:44:00.000Z"
+    }
+  ],
+  "issues": [
+    {
+      "row": 1,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 10431,
+      "commentCount": 82,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 2,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 3261,
+      "commentCount": 28,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 3,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 2469,
+      "commentCount": 52,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 25,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 119,
+      "commentCount": 2,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 33,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 102,
+      "commentCount": 2,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 35,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 92,
+      "commentCount": 2,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 36,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 87,
+      "commentCount": 2,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 38,
+      "label": "ซื้อขายทุกอย่างกรุงเทพ🛒สมุทรปราการ📢",
+      "viewers": 83,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 42,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 75,
+      "commentCount": 4,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 44,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 74,
+      "commentCount": 4,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 45,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 72,
+      "commentCount": 3,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 47,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 71,
+      "commentCount": 4,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 48,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 69,
+      "commentCount": 2,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 57,
+      "label": "สูตรเครื่องดื่ม สูตรชากาแฟ แชร์สูตรขนม",
+      "viewers": 46,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 58,
+      "label": "กิน เที่ยว ฮาลาลทั่วไทย (Halal Thailand) • รอดำเนินการ",
+      "viewers": 42,
+      "commentCount": 10,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 61,
+      "label": "วิหารแดง ตลาดออนไลน์ ซื้อ-ขาย ทั่วไทย ทุกชนิด",
+      "viewers": 35,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 62,
+      "label": "อาหารอร่อยอาหารน่ากิน",
+      "viewers": 35,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 63,
+      "label": "อาหารทำเอง โพสได้ทุกแนวจ้า",
+      "viewers": 31,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 68,
+      "label": "อาหาร",
+      "viewers": 25,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 71,
+      "label": "กลุ่มร้านกาแฟ ร้านอาหาร คาเฟ่",
+      "viewers": 20,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 72,
+      "label": "ขาย เซ้ง อุปกรณ์มือ 1 และ 2 วัตถุดิบในร้านอาหาร กทมและใกล้เคียง",
+      "viewers": 20,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 75,
+      "label": "กลุ่มขายของกินทุกประเภท ปลีก-ส่ง",
+      "viewers": 19,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 76,
+      "label": "69 อาหารฮาลาลทุ่งครุ",
+      "viewers": 19,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 77,
+      "label": "ซื้อขายนนทบุรี",
+      "viewers": 18,
+      "commentCount": 5,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 84,
+      "label": "รีวิวร้านฮาลาล",
+      "viewers": 11,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 85,
+      "label": "ซื้อ-ขาย ของกิน ทั่วประเทศ",
+      "viewers": 11,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 87,
+      "label": "รวมร้านอาหาร ของกิน ร้านขนม ร้านเบเกอรี่ ร้านกาแฟอร่อยๆ นนทบุรี ฝากร้านได้",
+      "viewers": 10,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 88,
+      "label": "แฟรนไชส์ วัตถุดิบ อาหาร แช่แข็ง สเต๊ก ร้าน กาแฟ คาเฟ่ รีสอร์ต น่าลงทุน",
+      "viewers": 10,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 89,
+      "label": "ตลาดนัดมุสลิม [ Muslim Market ]",
+      "viewers": 10,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 92,
+      "label": "ฮาลาลเชียงใหม่",
+      "viewers": 9,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 93,
+      "label": "ตลาดนัดมุสลิม สินค้าฮาลาล",
+      "viewers": 9,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 95,
+      "label": "ของกินรังสิตคลอง1-12",
+      "viewers": 8,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 96,
+      "label": "ของอร่อยทั่วไทย",
+      "viewers": 7,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 97,
+      "label": "ซื้อขายปทุมธานี",
+      "viewers": 7,
+      "commentCount": 9,
+      "kind": "invalid",
+      "reason": "The assigned post belongs to a different known Facebook group."
+    },
+    {
+      "row": 98,
+      "label": "ตลาดมุสลิมและสินค้าฮาลาล เกาะลันตา",
+      "viewers": 7,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 99,
+      "label": "ตลาดมุสลิมกับสินค้าที่ฮาลาล (ลงโฆษณาฟรี💯%)",
+      "viewers": 7,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 103,
+      "label": "อาหารฮาลาล@ระยอง",
+      "viewers": 6,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 104,
+      "label": "ตลาดอาหารฮาลาล แห่งประเทศไทย",
+      "viewers": 5,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 105,
+      "label": "กลุ่มขนมและอาหารอร่อยทั่วไทย",
+      "viewers": 5,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 106,
+      "label": "ตลาด ซื้อ-ขาย รังสิต คลองหลวง ลำลูกกา",
+      "viewers": 5,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 107,
+      "label": "ฮาลาลออนไลน์ มีอะไรดีมาขาย",
+      "viewers": 5,
+      "commentCount": 9,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 109,
+      "label": "หาของกินย่านปทุมธานี",
+      "viewers": 3,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 110,
+      "label": "ตลาดมุสลิม (สำหรับอาหารฮาลาลเท่านั้น)",
+      "viewers": 3,
+      "commentCount": 10,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 111,
+      "label": "ผู้สูงวัยยุคใหม่ สุขภาพดี มีความสุข • เมื่อวานนี้ เวลา 12:48",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 112,
+      "label": "คนแก่สูงวัย กับสาวสูงวัยใจตรงกัน • เมื่อวานนี้ เวลา 12:44",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 113,
+      "label": "อาหารคลีน ง่ายนิดเดียว • เมื่อวานนี้ เวลา 12:07",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 114,
+      "label": "เมนูอาหารสุขภาพง่ายๆใครๆก็ทำได้ • เมื่อวานนี้ เวลา 12:06",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 115,
+      "label": "กลุ่มผึ้งหลวงป่าแท้ๆ💯% จำหน่ายตามฤดูกาล รวงผึ้ง น้ำผึ้ง ตัวอ่อนผึ้ง เกษร • เมื่อวานนี้ เวลา 11:37",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 116,
+      "label": "ขาย ปลีกส่ง เมล็ดกาแฟคั่วดอยช้าง น้ำผึ้ง กาแฟสำเร็จรูป ชาผลไม้ ชาดอกไม้ • เมื่อวานนี้ เวลา 11:33",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "The assigned post belongs to a different known Facebook group."
+    },
+    {
+      "row": 117,
+      "label": "น้ำผึ้งแท้🐝จากทุกจังหวัด🐝💯🌿🌈 • เมื่อวานนี้ เวลา 11:30",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 118,
+      "label": "ซื้อ-ขาย น้ำผึ้งแท้100% • เมื่อวานนี้ เวลา 11:26",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 119,
+      "label": "ซื้อขายน้ำผึ้งแท้ • เมื่อวานนี้ เวลา 11:19",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 120,
+      "label": "จำหน่ายน้ำผึ้งแท้ รวงผึ้งแท้100% สดใหม่จากฟาร์มโดยตรง • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 121,
+      "label": "🐝น้ำผึ้งป่า🐝 รับประกันแท้ 1000000% • เมื่อวานนี้ เวลา 11:15",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 122,
+      "label": "กิน เที่ยว ฮาลาลทั่วไทย (Halal Thailand) • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 123,
+      "label": "เมนูอาหาร",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 124,
+      "label": "ชาวลำลูกกา (ดั้งเดิม) • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 125,
+      "label": "ของอร่อยเมืองสุรินทร์ • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 126,
+      "label": "ของอร่อย ทีเด็ดเมืองนนท์",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "The assigned post belongs to a different known Facebook group."
+    },
+    {
+      "row": 127,
+      "label": "รวมของกินเมืองเอก - รังสิต - ปทุมธานี",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 128,
+      "label": "รีวิวร้านอร่อย ที่ทุกคนต้องไปลอง",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 129,
+      "label": "ของกินพี่น้องชาวรังสิต😋",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 130,
+      "label": "ของดีกินไปเหอะ • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 131,
+      "label": "กลุ่มขายวัตถุดิบกาแฟ และแบ่งปั้นสูตรกาแฟ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 132,
+      "label": "พุทธมณฑลสาย 2 ของอร่อย - คาเฟ่ ร้านอาหาร ร้านกาแฟ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 133,
+      "label": "ขนมขายในร้านกาแฟ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 134,
+      "label": "ตลาดนัดอุปกรณ์วัตถุดิบร้านอาหารและโรงแรม",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 135,
+      "label": "อาหารทำกิน และขาย",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 136,
+      "label": "รวมพลคนขายอาหาร • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 137,
+      "label": "เซ้งกิจการร้านอาหาร ซื้อขายอุปกรณ์ร้านอาหารมือสอง พูดคุยสอบถามได้ตามสะดวก",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 138,
+      "label": "คลังอาหารฮาลาล",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 139,
+      "label": "อาหารฮาลาลฝั่งธน และใกล้เคียง",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 140,
+      "label": "มุสลิมฮาลาล พลาซ่า สินค้าแฟชั่น แหล่งรวมสินค้า- Muslim Halal Plaza",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 141,
+      "label": "ฮาลาลอยุธยาพาชิลล์(Halal Ayutthaya Pa Chill) • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 142,
+      "label": "ฮาลาล@พัทยา",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "The assigned post belongs to a different known Facebook group."
+    },
+    {
+      "row": 143,
+      "label": "ตลาดมุสลิมฮาลาล โพสฟรี ขายฟรี",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "The assigned post belongs to a different known Facebook group."
+    },
+    {
+      "row": 144,
+      "label": "ไทยฮาลาลฟู้ด",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 145,
+      "label": "ตลาดอาหารฮาลาล แห่งประเทศไทย V.2 • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 146,
+      "label": "อาหาร ฮาลาล ทั่วไทย(99/ปี)",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 147,
+      "label": "อาหารฮาลาล รามคำแหง 53 • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 148,
+      "label": "เครือข่ายผู้บริโภคผลิตภัณฑ์ฮาลาล • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 149,
+      "label": "ชาวลำลูกกา (ดั้งเดิม) • รอดำเนินการ",
+      "viewers": 1,
+      "commentCount": 0,
+      "kind": "invalid",
+      "reason": "This row is pending in Meta; confirm publication before updating Viewers."
+    },
+    {
+      "row": 150,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 0,
+      "commentCount": null,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 151,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 0,
+      "commentCount": null,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 152,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 0,
+      "commentCount": null,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 153,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 0,
+      "commentCount": null,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 154,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 0,
+      "commentCount": null,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 155,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 0,
+      "commentCount": null,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 156,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 0,
+      "commentCount": null,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    },
+    {
+      "row": 157,
+      "label": "เผยแพร่แล้ว",
+      "viewers": 0,
+      "commentCount": null,
+      "kind": "unmatched",
+      "reason": "No tracked post matches this row."
+    }
+  ],
+  "warnings": [
+    "Pending rows in Meta are skipped until publication is confirmed."
+  ]
+}

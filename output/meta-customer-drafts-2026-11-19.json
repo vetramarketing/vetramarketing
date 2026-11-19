@@ -1,0 +1,13 @@
+{
+  "company": "VETRA STORE",
+  "timeZone": "Asia/Bangkok",
+  "customers": [
+    { "name": "Antika Aroonrat", "lastContactOn": "2026-11-18" },
+    { "name": "สมบุญ พ่วงมี", "lastContactOn": "2026-11-18" },
+    { "name": "สมัย คำใสย์", "lastContactOn": "2026-11-16" },
+    { "name": "ร้าน เจริญศิลป์", "lastContactOn": "2026-11-16" },
+    { "name": "ตาเล็ก หอวัง", "lastContactOn": "2026-11-16" },
+    { "name": "บานบรี ดอกไม้งาม", "lastContactOn": "2026-11-16" },
+    { "name": "Somsak Chusakchairat", "lastContactOn": "2026-11-16" }
+  ]
+}
