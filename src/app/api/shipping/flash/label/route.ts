@@ -1,11 +1,11 @@
 import 'server-only';
-import { accessRequired } from '@/lib/server/access-response';
-import { hasValidSession } from '@/lib/server/site-access';
+import { checkRequestAccess } from '@/lib/server/access-response';
 import { downloadFlashLabel } from '@/lib/shipping/gateway';
 
 export const runtime = 'nodejs';
 
-export function POST(request: Request) {
-  if (!hasValidSession(request)) return accessRequired();
+export async function POST(request: Request) {
+  const access = await checkRequestAccess(request);
+  if (access instanceof Response) return access;
   return downloadFlashLabel(request);
 }

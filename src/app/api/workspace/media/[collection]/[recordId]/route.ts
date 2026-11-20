@@ -1,6 +1,5 @@
 import 'server-only';
-import { accessRequired } from '@/lib/server/access-response';
-import { hasValidSession } from '@/lib/server/site-access';
+import { checkRequestAccess } from '@/lib/server/access-response';
 import { CATALOG_IMAGE_LIMITS } from '@/lib/cloudinary-media';
 import { getWorkspaceMongoDb, workspaceDatabaseScope } from '@/lib/server/mongo-workspace';
 import {
@@ -9,7 +8,7 @@ import {
   StageError,
   validSubmissionId,
 } from '@/lib/server/staged-images';
-import { isLocalWorkspaceRequest } from '@/lib/server/workspace-request';
+import { isTrustedWorkspaceRequest } from '@/lib/server/workspace-request';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,8 +17,9 @@ const json = (value: unknown, status = 200) =>
 type Context = { params: Promise<{ collection: string; recordId: string }> };
 
 export async function PUT(request: Request, context: Context) {
-  if (!hasValidSession(request)) return accessRequired();
-  if (!isLocalWorkspaceRequest(request)) return json({ code: 'LOCAL_ACCESS_REQUIRED' }, 403);
+  const access = await checkRequestAccess(request);
+  if (access instanceof Response) return access;
+  if (!isTrustedWorkspaceRequest(request)) return json({ code: 'WORKSPACE_ORIGIN_REQUIRED' }, 403);
   const id = request.headers.get('x-submission-id') ?? '';
   if (!validSubmissionId(id) || !request.body) return json({ code: 'INVALID_SUBMISSION' }, 400);
   const mime = request.headers.get('content-type') ?? '';

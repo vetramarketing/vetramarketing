@@ -1,11 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import {
-  MongoClient,
-  MongoServerError,
-  type AnyBulkWriteOperation,
-  type ClientSession,
-  type Db,
-} from 'mongodb';
+import { MongoServerError, type AnyBulkWriteOperation, type ClientSession, type Db } from 'mongodb';
 import { newDuplicatePair } from '../post-identity';
 import {
   deserializeWorkspace,
@@ -15,6 +9,15 @@ import {
 import { migrateWorkspaceMedia, type MediaOptions } from './workspace-media';
 import { assertStoredLabels } from './mongo-labels';
 import { cleanupStagedImages, commitStagedReferences, resolveStagedImage } from './staged-images';
+
+import { MongoWorkspaceError, workspaceConnection } from './workspace-database';
+export {
+  MongoWorkspaceError,
+  getWorkspaceMongoDb,
+  closeWorkspaceMongoDb,
+  configuredWorkspaceScope,
+  workspaceDatabaseScope,
+} from './workspace-database';
 
 const workspaceId = 'vetra-marketing';
 const entitySets = [
@@ -58,79 +61,9 @@ export type MongoWorkspaceWrite = {
   verifyLabelBytes?: boolean;
 };
 
-export class MongoWorkspaceError extends Error {
-  constructor(
-    readonly code: string,
-    readonly status: number,
-    readonly postIds?: [string, string],
-  ) {
-    super(code);
-  }
-}
 const conflict = () => new MongoWorkspaceError('WORKSPACE_REVISION_CONFLICT', 409);
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 
-type Connection = { client: MongoClient; db: Db; scope: string };
-const cache = globalThis as typeof globalThis & { vetraMongoConnection?: Promise<Connection> };
-function configuredConnection(): Connection {
-  const uri = process.env.MONGODB_URI?.trim();
-  if (!uri) throw new MongoWorkspaceError('MONGODB_NOT_CONFIGURED', 503);
-  const client = new MongoClient(uri, {
-    appName: 'vetra-marketing',
-    serverSelectionTimeoutMS: 12000,
-    maxPoolSize: 8,
-    ignoreUndefined: true,
-  });
-  const path = uri
-    .split('?')[0]
-    .slice(uri.indexOf('://') + 3)
-    .split('/')[1];
-  const name =
-    process.env.MONGODB_DB?.trim() || (path && decodeURIComponent(path)) || 'vetra_marketing';
-  if (['admin', 'config', 'local'].includes(name))
-    throw new MongoWorkspaceError('INVALID_DATABASE', 503);
-  const db = client.db(name);
-  const host =
-    client.options.srvHost ||
-    client.options.hosts
-      .map((item) => item.toString())
-      .sort()
-      .join(',');
-  const scope = digest(host + '/' + name).slice(0, 32);
-  return { client, db, scope };
-}
-
-/** Resolve the configured scope without opening a database connection. */
-export function configuredWorkspaceScope(): string {
-  return configuredConnection().scope;
-}
-
-async function connection(): Promise<Connection> {
-  if (!cache.vetraMongoConnection) {
-    const { client, db, scope } = configuredConnection();
-    cache.vetraMongoConnection = client
-      .connect()
-      .then(() => ({ client, db, scope }))
-      .catch(async (error) => {
-        delete cache.vetraMongoConnection;
-        await client.close().catch(() => {});
-        throw error;
-      });
-  }
-  return cache.vetraMongoConnection;
-}
-
-export async function getWorkspaceMongoDb(): Promise<Db> {
-  return (await connection()).db;
-}
-export async function workspaceDatabaseScope(): Promise<string> {
-  return (await connection()).scope;
-}
-export async function closeWorkspaceMongoDb(): Promise<void> {
-  const pending = cache.vetraMongoConnection;
-  delete cache.vetraMongoConnection;
-  if (pending) await (await pending).client.close();
-}
 const heads = (db: Db) => db.collection<Head>('vetra_workspace');
 const receipts = (db: Db) => db.collection<Receipt>('vetra_operations');
 const rows = (db: Db, key: EntitySet) => db.collection<EntityDocument>('vetra_' + key);
@@ -169,14 +102,14 @@ async function readSnapshot(
 }
 
 export async function readMongoWorkspace(): Promise<MongoWorkspaceSnapshot | null> {
-  const { client, db, scope } = await connection();
+  const { client, db, scope } = await workspaceConnection();
   return client.withSession((session) =>
     session.withTransaction(() => readSnapshot(db, scope, session), transaction),
   );
 }
 
 export async function cleanupWorkspaceImages(id: string | null, options: MediaOptions = {}) {
-  const { db, scope } = await connection();
+  const { db, scope } = await workspaceConnection();
   return cleanupStagedImages(
     db,
     async (session) => (await readSnapshot(db, scope, session))?.workspace,
@@ -238,7 +171,7 @@ export async function writeMongoWorkspace({
     throw new MongoWorkspaceError('INVALID_WORKSPACE', 400);
   }
   const requestDigest = digest(JSON.stringify(canonical));
-  const { client, db, scope } = await connection();
+  const { client, db, scope } = await workspaceConnection();
   const replay = (record: Receipt | null, current: MongoWorkspaceSnapshot | null) => {
     if (!record) return null;
     if (

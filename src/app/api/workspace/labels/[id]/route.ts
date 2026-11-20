@@ -1,10 +1,9 @@
 import 'server-only';
-import { accessRequired } from '@/lib/server/access-response';
-import { hasValidSession } from '@/lib/server/site-access';
+import { checkRequestAccess } from '@/lib/server/access-response';
 import { CarrierLabelError, MAX_CARRIER_LABEL_BYTES } from '@/lib/order-labels';
 import { getWorkspaceMongoDb } from '@/lib/server/mongo-workspace';
 import { mongoLabelStore, storeUploadedLabel, validLabelId } from '@/lib/server/mongo-labels';
-import { isLocalWorkspaceRequest } from '@/lib/server/workspace-request';
+import { isTrustedWorkspaceRequest } from '@/lib/server/workspace-request';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,8 +12,9 @@ const headers = { 'Cache-Control': 'private, no-store' };
 const status = (code: number) => new Response(null, { status: code, headers });
 
 export async function GET(request: Request, context: Context) {
-  if (!hasValidSession(request)) return accessRequired();
-  if (!isLocalWorkspaceRequest(request)) return status(403);
+  const access = await checkRequestAccess(request);
+  if (access instanceof Response) return access;
+  if (!isTrustedWorkspaceRequest(request)) return status(403);
   const { id } = await context.params;
   if (!validLabelId(id)) return status(400);
   try {
@@ -33,8 +33,9 @@ export async function GET(request: Request, context: Context) {
 }
 
 export async function PUT(request: Request, context: Context) {
-  if (!hasValidSession(request)) return accessRequired();
-  if (!isLocalWorkspaceRequest(request)) return status(403);
+  const access = await checkRequestAccess(request);
+  if (access instanceof Response) return access;
+  if (!isTrustedWorkspaceRequest(request)) return status(403);
   const { id } = await context.params;
   if (!validLabelId(id) || !request.body) return status(400);
   if (request.headers.get('content-type') !== 'application/pdf') return status(415);

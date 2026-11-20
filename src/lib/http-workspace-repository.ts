@@ -112,8 +112,8 @@ async function readResponse(response: Response): Promise<WorkspaceState> {
         },
       };
   }
-  if (body.code === 'LOCAL_ACCESS_REQUIRED')
-    throw new Error('Open the workspace on the configured localhost address to access MongoDB.');
+  if (body.code === 'WORKSPACE_ORIGIN_REQUIRED' || body.code === 'LOCAL_ACCESS_REQUIRED')
+    throw new Error('Open the workspace at its configured address to access MongoDB.');
   throw new Error(
     typeof body.message === 'string' ? body.message : 'Could not access the MongoDB workspace.',
   );

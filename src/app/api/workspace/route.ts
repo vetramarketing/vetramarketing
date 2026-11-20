@@ -1,6 +1,5 @@
 import 'server-only';
-import { accessRequired } from '@/lib/server/access-response';
-import { hasValidSession } from '@/lib/server/site-access';
+import { checkRequestAccess } from '@/lib/server/access-response';
 import { MongoNetworkError, MongoServerSelectionError } from 'mongodb';
 import {
   configuredWorkspaceScope,
@@ -9,7 +8,7 @@ import {
   workspaceDatabaseScope,
   writeMongoWorkspace,
 } from '@/lib/server/mongo-workspace';
-import { isLocalWorkspaceRequest } from '@/lib/server/workspace-request';
+import { isTrustedWorkspaceRequest } from '@/lib/server/workspace-request';
 import { StoredLabelIntegrityError } from '@/lib/server/mongo-labels';
 import { StageError } from '@/lib/server/staged-images';
 
@@ -50,9 +49,20 @@ function failure(error: unknown): Response {
 }
 
 export async function GET(request: Request) {
-  if (!hasValidSession(request)) return accessRequired();
-  if (!process.env.MONGODB_URI?.trim()) return json({ configured: false });
-  if (!isLocalWorkspaceRequest(request)) return json({ code: 'LOCAL_ACCESS_REQUIRED' }, 403);
+  const access = await checkRequestAccess(request);
+  if (access instanceof Response) return access;
+  if (!isTrustedWorkspaceRequest(request)) return json({ code: 'WORKSPACE_ORIGIN_REQUIRED' }, 403);
+  if (!process.env.MONGODB_URI?.trim()) {
+    if (process.env.VERCEL)
+      return json(
+        {
+          code: 'WORKSPACE_CONFIGURATION_REQUIRED',
+          message: 'The hosted workspace requires a MongoDB connection.',
+        },
+        503,
+      );
+    return json({ configured: false });
+  }
   try {
     const snapshot = await readMongoWorkspace();
     return snapshot
@@ -104,8 +114,9 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
 }
 
 export async function POST(request: Request) {
-  if (!hasValidSession(request)) return accessRequired();
-  if (!isLocalWorkspaceRequest(request)) return json({ code: 'LOCAL_ACCESS_REQUIRED' }, 403);
+  const access = await checkRequestAccess(request);
+  if (access instanceof Response) return access;
+  if (!isTrustedWorkspaceRequest(request)) return json({ code: 'WORKSPACE_ORIGIN_REQUIRED' }, 403);
   try {
     const body = await readBody(request);
     if (body.databaseScope !== undefined && body.databaseScope !== (await workspaceDatabaseScope()))

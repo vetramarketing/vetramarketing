@@ -50,6 +50,8 @@ test(
           mock.reads++;
           return mock.workspace ? mock.workspace(route) : route.fulfill({ json: snapshot });
         }
+        if (pathname === '/api/workspace' && route.request().method() === 'POST' && mock.save)
+          return mock.save(route);
         if (pathname.startsWith('/api/') || route.request().method() !== 'GET')
           return route.abort();
         return route.continue();
@@ -130,6 +132,31 @@ test(
         );
         await name.waitFor();
         assert.equal(await name.inputValue(), 'Unsaved session draft');
+      },
+    );
+
+    await t.test(
+      'an unverified private save shields the existing draft and restores it after revalidation',
+      async (t) => {
+        const { mock, page } = await fixture(t);
+        await page.goto(base + '/products');
+        await page.getByRole('button', { name: 'Edit Session test product' }).click();
+        const name = page.getByLabel('Product name', { exact: true });
+        await name.fill('Unsaved after private API outage');
+        mock.save = (route) =>
+          route.fulfill({
+            status: 503,
+            headers: { 'X-Vetra-Session': 'unavailable' },
+            json: { code: 'SESSION_VERIFICATION_UNAVAILABLE' },
+          });
+        await page.getByRole('button', { name: 'Save', exact: true }).click();
+        const retry = page.getByRole('button', { name: 'Retry', exact: true });
+        await retry.waitFor();
+        assert.equal(await page.getByRole('textbox', { name: 'Product name' }).count(), 0);
+        assert.equal(new URL(page.url()).pathname, '/products');
+        await retry.click();
+        await name.waitFor();
+        assert.equal(await name.inputValue(), 'Unsaved after private API outage');
       },
     );
 

@@ -21,6 +21,7 @@ import {
 import { isLocalWorkspaceRequest } from '../src/lib/server/workspace-request';
 import { serializeWorkspace } from '../src/lib/workspace-storage';
 import { checkStagedImages } from './helpers/staged-images';
+import { checkMongoAccess } from './helpers/mongo-access';
 
 test('workspace requests require local access and same-origin mutations', () => {
   const address = 'http://127.0.0.1:' + (process.env.PORT || 3100);
@@ -123,6 +124,10 @@ test(
     );
     assert.equal(current.migrationSourceDigest, imported.migrationSourceDigest);
     const db = await getWorkspaceMongoDb();
+    await t.test(
+      'hosted PIN sessions and throttling persist across independent workers',
+      (authTest) => checkMongoAccess(authTest, db, directory),
+    );
     await t.test(
       'private carrier PDFs validate before commit and preserve their bytes on retry',
       async (pdfTest) => {

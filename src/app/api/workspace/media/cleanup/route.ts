@@ -1,8 +1,7 @@
 import 'server-only';
-import { accessRequired } from '@/lib/server/access-response';
-import { hasValidSession } from '@/lib/server/site-access';
+import { checkRequestAccess } from '@/lib/server/access-response';
 import { cleanupWorkspaceImages } from '@/lib/server/mongo-workspace';
-import { isLocalWorkspaceRequest } from '@/lib/server/workspace-request';
+import { isTrustedWorkspaceRequest } from '@/lib/server/workspace-request';
 import { StageError } from '@/lib/server/staged-images';
 
 export const runtime = 'nodejs';
@@ -10,8 +9,9 @@ export const dynamic = 'force-dynamic';
 const json = (value: unknown, status = 200) =>
   Response.json(value, { status, headers: { 'Cache-Control': 'private, no-store' } });
 export async function POST(request: Request) {
-  if (!hasValidSession(request)) return accessRequired();
-  if (!isLocalWorkspaceRequest(request)) return json({ code: 'LOCAL_ACCESS_REQUIRED' }, 403);
+  const access = await checkRequestAccess(request);
+  if (access instanceof Response) return access;
+  if (!isTrustedWorkspaceRequest(request)) return json({ code: 'WORKSPACE_ORIGIN_REQUIRED' }, 403);
   try {
     return json(
       await cleanupWorkspaceImages(new URL(request.url).searchParams.get('submissionId')),

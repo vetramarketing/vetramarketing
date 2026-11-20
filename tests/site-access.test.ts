@@ -8,13 +8,18 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import test, { type TestContext } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
+import { NextRequest } from 'next/server';
+import { proxy } from '../src/proxy';
+import { checkRequestAccess } from '../src/lib/server/access-response';
 import {
   closeAccessDatabase,
   hasValidSession,
   readAccessSession,
+  SessionStoreUnavailable,
   safeWorkspaceReturn,
   SESSION_COOKIE_NAME,
   SESSION_SECONDS,
+  unlockAccess,
 } from '../src/lib/server/site-access';
 import { lockRequest, unlockRequest } from '../src/lib/server/site-access-handlers';
 
@@ -75,9 +80,48 @@ function errorLocation(response: Response) {
 }
 const lookup = (cookie: string) => ({ headers: new Headers({ cookie }) });
 
+test('an unavailable hosted database fails closed while local sessions work offline', async (t) => {
+  const { pin, file } = await fixture(t);
+  const oldUri = process.env.MONGODB_URI;
+  t.after(() => {
+    if (oldUri === undefined) delete process.env.MONGODB_URI;
+    else process.env.MONGODB_URI = oldUri;
+  });
+  process.env.MONGODB_URI = 'unconfigured-test-uri';
+  process.env.VERCEL = '1';
+  assert.equal((await unlockAccess(pin, form(pin))).status, 'unavailable');
+  assert.equal(existsSync(file), false);
+  delete process.env.VERCEL;
+  const cookie = sessionHeader(await unlockRequest(form(pin)));
+  assert.equal(await hasValidSession(lookup(cookie)), true);
+  process.env.VERCEL = '1';
+  await assert.rejects(hasValidSession(lookup(cookie)), SessionStoreUnavailable);
+  const unavailable = await checkRequestAccess(lookup(cookie));
+  assert.ok(unavailable instanceof Response);
+  assert.equal(unavailable.status, 503);
+  assert.equal(unavailable.headers.get('Cache-Control'), 'private, no-store');
+  assert.equal(unavailable.headers.get('X-Vetra-Session'), 'unavailable');
+  assert.equal(unavailable.headers.get('Set-Cookie'), null);
+  assert.deepEqual(await unavailable.json(), { code: 'SESSION_VERIFICATION_UNAVAILABLE' });
+  for (const invalid of ['', SESSION_COOKIE_NAME + '=bad', cookie + '; ' + cookie]) {
+    const denied = await checkRequestAccess(lookup(invalid));
+    assert.ok(denied instanceof Response);
+    assert.equal(denied.status, 401);
+    assert.equal(denied.headers.get('X-Vetra-Session'), null);
+  }
+  for (const path of ['/groups', '/api/workspace', '/_next/static/chunks/app.js']) {
+    const response = await proxy(new NextRequest(origin + path, { headers: { cookie } }));
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('location'), null);
+    assert.equal(response.headers.get('Set-Cookie'), null);
+  }
+  delete process.env.VERCEL;
+  assert.ok(await hasValidSession(lookup(cookie)));
+});
+
 test('verified PIN issues an opaque, persistent and revocable eight-hour session', async (t) => {
   const { pin, file } = await fixture(t);
-  assert.equal(hasValidSession(lookup('')), false);
+  assert.equal(await hasValidSession(lookup('')), false);
   assert.equal(existsSync(file), false);
   let time = Date.now();
   t.mock.method(Date, 'now', () => time);
@@ -92,7 +136,9 @@ test('verified PIN issues an opaque, persistent and revocable eight-hour session
   assert.doesNotMatch(raw, /; Secure/);
   const cookie = sessionHeader(accepted);
   assert.ok(cookie.startsWith(SESSION_COOKIE_NAME + '='));
-  assert.deepEqual(readAccessSession(lookup(cookie)), { expiresAt: time + SESSION_SECONDS * 1000 });
+  assert.deepEqual(await readAccessSession(lookup(cookie)), {
+    expiresAt: time + SESSION_SECONDS * 1000,
+  });
   closeAccessDatabase();
   const inspection = new DatabaseSync(file, { readOnly: true });
   try {
@@ -104,23 +150,23 @@ test('verified PIN issues an opaque, persistent and revocable eight-hour session
   } finally {
     inspection.close();
   }
-  assert.ok(hasValidSession(lookup(cookie)));
-  assert.equal(hasValidSession(lookup(cookie + '; ' + cookie)), false);
+  assert.ok(await hasValidSession(lookup(cookie)));
+  assert.equal(await hasValidSession(lookup(cookie + '; ' + cookie)), false);
   const second = await unlockRequest(form(pin, '/orders', { cookie }));
   const active = sessionHeader(second);
   assert.notEqual(active, cookie);
-  assert.equal(hasValidSession(lookup(cookie)), false);
+  assert.equal(await hasValidSession(lookup(cookie)), false);
   time += SESSION_SECONDS * 1000 - 1;
-  assert.ok(hasValidSession(lookup(active)));
+  assert.ok(await hasValidSession(lookup(active)));
   time += 1;
-  assert.equal(hasValidSession(lookup(active)), false);
+  assert.equal(await hasValidSession(lookup(active)), false);
   const renewed = sessionHeader(await unlockRequest(form(pin)));
-  const locked = lockRequest(form('', '/', { cookie: renewed + '; ' + renewed }));
+  const locked = await lockRequest(form('', '/', { cookie: renewed + '; ' + renewed }));
   assert.equal(locked.status, 303);
   assert.equal(locked.headers.get('location'), '/unlock');
   assert.match(locked.headers.get('set-cookie')!, /Max-Age=0/);
   closeAccessDatabase();
-  assert.equal(hasValidSession(lookup(renewed)), false);
+  assert.equal(await hasValidSession(lookup(renewed)), false);
 });
 
 test('invalid settings fail closed and configuration rotation permanently revokes issued sessions', async (t) => {
@@ -128,15 +174,15 @@ test('invalid settings fail closed and configuration rotation permanently revoke
   const original = process.env.WORKSPACE_PIN_HASH;
   const token = sessionHeader(await unlockRequest(form(pin)));
   delete process.env.WORKSPACE_PIN_HASH;
-  assert.equal(hasValidSession(lookup(token)), false);
+  assert.equal(await hasValidSession(lookup(token)), false);
   assert.equal(errorLocation(await unlockRequest(form(pin))), 'unavailable');
   process.env.WORKSPACE_PIN_HASH = 'unusable';
   assert.equal(errorLocation(await unlockRequest(form(pin))), 'unavailable');
   process.env.WORKSPACE_PIN_HASH = pinHash(pin);
-  assert.equal(hasValidSession(lookup(token)), false);
+  assert.equal(await hasValidSession(lookup(token)), false);
   process.env.WORKSPACE_PIN_HASH = original;
-  assert.equal(hasValidSession(lookup(token)), false);
-  assert.ok(hasValidSession(lookup(sessionHeader(await unlockRequest(form(pin))))));
+  assert.equal(await hasValidSession(lookup(token)), false);
+  assert.ok(await hasValidSession(lookup(sessionHeader(await unlockRequest(form(pin))))));
 });
 
 test('only known workspace pages can be redirect targets and foreign initiators cannot unlock or lock', async (t) => {
@@ -168,8 +214,11 @@ test('only known workspace pages can be redirect targets and foreign initiators 
   const accepted = await unlockRequest(form(pin, '//other.invalid/orders'));
   assert.equal(accepted.headers.get('location'), '/');
   const cookie = sessionHeader(accepted);
-  assert.equal(lockRequest(form('', '/', { origin: 'https://other.invalid', cookie })).status, 403);
-  assert.ok(hasValidSession(lookup(cookie)));
+  assert.equal(
+    (await lockRequest(form('', '/', { origin: 'https://other.invalid', cookie }))).status,
+    403,
+  );
+  assert.ok(await hasValidSession(lookup(cookie)));
   const tls = 'https://localhost:3100';
   process.env.VETRA_WORKSPACE_ORIGIN = tls;
   assert.match(
@@ -205,5 +254,5 @@ test('concurrent workers share five attempts and the fifteen-minute retry window
   assert.equal(errorLocation(await unlockRequest(form(pin))), 'limited');
   const later = Date.now() + 15 * 60 * 1000 + 1000;
   t.mock.method(Date, 'now', () => later);
-  assert.ok(hasValidSession(lookup(sessionHeader(await unlockRequest(form(pin))))));
+  assert.ok(await hasValidSession(lookup(sessionHeader(await unlockRequest(form(pin))))));
 });

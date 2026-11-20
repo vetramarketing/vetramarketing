@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { sessionDeniedEvent } from '@/lib/workspace-api-fetch';
+import { sessionDeniedEvent, sessionUnavailableEvent } from '@/lib/workspace-api-fetch';
 import type { View } from '@/lib/types';
 import MarketingApp from './MarketingApp';
 import styles from './AuthenticatedWorkspace.module.css';
@@ -159,14 +159,16 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
         cover('lock-failed');
       }
     }
-    function suspend() {
+    function suspend(next: 'checking' | 'unavailable') {
       if (!active || leaving || lockRequested) return;
       pending?.abort();
       pending = null;
-      cover('checking');
+      cover(next);
     }
+    const hidden = () => suspend('checking');
+    const unavailable = () => suspend('unavailable');
     const visibility = () => {
-      if (document.visibilityState === 'hidden') suspend();
+      if (document.visibilityState === 'hidden') hidden();
       else void check();
     };
     const restored = (event: PageTransitionEvent) => {
@@ -185,12 +187,13 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
       };
     actions.current = { lock, check };
     document.addEventListener('visibilitychange', visibility);
-    window.addEventListener('pagehide', suspend);
+    window.addEventListener('pagehide', hidden);
     window.addEventListener('pageshow', restored);
     window.addEventListener('popstate', reconnect);
     window.addEventListener('online', reconnect);
     window.addEventListener('storage', storage);
     window.addEventListener(sessionDeniedEvent, denied);
+    window.addEventListener(sessionUnavailableEvent, unavailable);
     void check();
     return () => {
       active = false;
@@ -198,12 +201,13 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
       clearTimeout(timer);
       channel?.close();
       document.removeEventListener('visibilitychange', visibility);
-      window.removeEventListener('pagehide', suspend);
+      window.removeEventListener('pagehide', hidden);
       window.removeEventListener('pageshow', restored);
       window.removeEventListener('popstate', reconnect);
       window.removeEventListener('online', reconnect);
       window.removeEventListener('storage', storage);
       window.removeEventListener(sessionDeniedEvent, denied);
+      window.removeEventListener(sessionUnavailableEvent, unavailable);
       delete document.documentElement.dataset.vetraCovered;
       actions.current = null;
     };
