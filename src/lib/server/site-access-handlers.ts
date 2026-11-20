@@ -1,9 +1,12 @@
+import { accessRequired, sessionUnavailable } from './access-response';
 import { isTrustedWorkspaceRequest } from './workspace-request';
 import {
+  accessSessionToken,
   lockAccess,
+  renewAccessSession,
   safeWorkspaceReturn,
   SESSION_COOKIE_NAME,
-  SESSION_SECONDS,
+  SessionStoreUnavailable,
   unlockAccess,
 } from './site-access';
 
@@ -14,8 +17,11 @@ const redirect = (location: string, cookie?: string) =>
     status: 303,
     headers: { ...headers, Location: location, ...(cookie && { 'Set-Cookie': cookie }) },
   });
-const cookie = (request: Request, token: string, seconds: number) =>
-  `${SESSION_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${seconds}${new URL(request.url).protocol === 'https:' ? '; Secure' : ''}`;
+function cookie(request: Request, token: string, expiresAt: number) {
+  const seconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+  const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
+  return `${SESSION_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${seconds}; Expires=${new Date(expiresAt).toUTCString()}${secure}`;
+}
 
 function trustedPost(request: Request) {
   return request.method === 'POST' && isTrustedWorkspaceRequest(request);
@@ -55,8 +61,25 @@ export async function unlockRequest(request: Request) {
   const pins = form?.getAll('pin') ?? [];
   const result = await unlockAccess(pins.length === 1 ? pins[0] : '', request);
   return result.status === 'accepted'
-    ? redirect(next, cookie(request, result.token, SESSION_SECONDS))
+    ? redirect(next, cookie(request, result.token, result.expiresAt))
     : redirect('/unlock?' + new URLSearchParams({ error: result.status, next }));
+}
+
+export async function activityRequest(request: Request) {
+  if (!trustedPost(request)) return new Response(null, { status: 403, headers });
+  const token = accessSessionToken(request);
+  if (!token) return accessRequired();
+  try {
+    const session = await renewAccessSession(request);
+    if (!session) return accessRequired();
+    return Response.json(
+      { authenticated: true, expiresAt: session.expiresAt },
+      { headers: { ...headers, 'Set-Cookie': cookie(request, token, session.expiresAt) } },
+    );
+  } catch (error) {
+    if (!(error instanceof SessionStoreUnavailable)) throw error;
+    return sessionUnavailable();
+  }
 }
 
 export async function lockRequest(request: Request) {

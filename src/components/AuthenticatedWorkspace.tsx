@@ -8,6 +8,16 @@ import styles from './AuthenticatedWorkspace.module.css';
 
 type Phase = 'checking' | 'ready' | 'unavailable' | 'locking' | 'lock-failed' | 'signed-out';
 const lockSignal = 'vetra-marketing.session-locked';
+const activityInterval = 60_000;
+const requestTimeout = 10_000;
+const interactionEvents = [
+  'keydown',
+  'input',
+  'pointerdown',
+  'click',
+  'wheel',
+  'touchmove',
+] as const;
 
 /** The server gates the page; recheck before opening any browser data, including recovery copies. */
 export default function AuthenticatedWorkspace({ initialView }: { initialView?: View }) {
@@ -29,8 +39,14 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
     let leaving = false;
     let lockRequested = false;
     let lockPending = false;
+    let verifiedUntil = 0;
+    let needsResumeCheck = document.visibilityState === 'hidden' || !document.hasFocus();
     let timer: ReturnType<typeof setTimeout> | undefined;
     let pending: AbortController | null = null;
+    let renewing = false;
+    let queuedActivityAt: number | null = null;
+    let lastRenewal = 0;
+    let activityTimer: ReturnType<typeof setTimeout> | undefined;
     let channel: BroadcastChannel | undefined;
     try {
       channel = new BroadcastChannel(lockSignal);
@@ -39,6 +55,10 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
     }
 
     function cover(next: Phase) {
+      verifiedUntil = 0;
+      clearTimeout(timer);
+      clearTimeout(activityTimer);
+      if (next !== 'checking') queuedActivityAt = null;
       document.documentElement.dataset.vetraCovered = '';
       if (content.current) content.current.inert = true;
       if (shield.current && !shield.current.open) shield.current.showModal();
@@ -53,7 +73,6 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
       if (!active || leaving) return;
       leaving = true;
       pending?.abort();
-      clearTimeout(timer);
       cover('signed-out');
       setOpened(false);
       if (notify) {
@@ -65,14 +84,19 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
         }
       }
     }
-    async function check() {
-      if (!active || leaving || lockRequested || pending) return;
-      cover('checking');
+    async function check(requireCover = false, renew = false) {
+      if (!active || leaving || lockRequested) return;
+      // An expiry or history restore must cover even while a background check is in flight.
+      if (requireCover || Date.now() >= verifiedUntil) cover('checking');
+      if (pending) return;
       const controller = new AbortController();
       pending = controller;
-      const timeout = setTimeout(() => controller.abort(), 10000);
+      renewing = renew;
+      const timeout = setTimeout(() => controller.abort(), requestTimeout);
       try {
-        const response = await fetch('/api/access/status', {
+        const response = await fetch(renew ? '/api/access/activity' : '/api/access/status', {
+          method: renew ? 'POST' : 'GET',
+          keepalive: renew,
           credentials: 'same-origin',
           cache: 'no-store',
           redirect: 'error',
@@ -92,10 +116,11 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
           status.expiresAt <= Date.now()
         )
           throw new Error();
+        verifiedUntil = status.expiresAt;
         clearTimeout(timer);
         timer = setTimeout(
-          () => void check(),
-          Math.min(status.expiresAt - Date.now(), 2_147_483_647),
+          () => void check(true),
+          Math.min(verifiedUntil - Date.now(), 2_147_483_647),
         );
         if (document.visibilityState === 'hidden') return;
         setOpened(true);
@@ -107,15 +132,56 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
         if (active && !leaving && !lockRequested && pending === controller) cover('unavailable');
       } finally {
         clearTimeout(timeout);
-        if (pending === controller) pending = null;
+        if (pending === controller) {
+          pending = null;
+          renewing = false;
+          scheduleActivity();
+        }
       }
     }
+
+    function scheduleActivity(flush = false) {
+      clearTimeout(activityTimer);
+      if (queuedActivityAt === null || !active || leaving || lockRequested || !verifiedUntil)
+        return;
+      const now = Date.now();
+      // A suspended tab can wake hours late. Its old timer is never evidence of current use.
+      if (now - queuedActivityAt > activityInterval + requestTimeout) {
+        queuedActivityAt = null;
+        return;
+      }
+      if (pending && renewing && !flush) return;
+      const due = Math.min(lastRenewal + activityInterval, verifiedUntil - requestTimeout);
+      if (!flush && now < due) {
+        activityTimer = setTimeout(scheduleActivity, due - now);
+        return;
+      }
+      queuedActivityAt = null;
+      lastRenewal = now;
+      // A renewal also verifies the session. An older GET cannot shorten the new deadline.
+      if (pending && !renewing) pending.abort();
+      pending = null;
+      void check(false, true);
+    }
+    function interaction(event: Event) {
+      if (
+        !event.isTrusted ||
+        document.visibilityState !== 'visible' ||
+        !document.hasFocus() ||
+        !verifiedUntil ||
+        shield.current?.open
+      )
+        return;
+      const alreadyQueued = queuedActivityAt !== null;
+      queuedActivityAt = Date.now();
+      if (!alreadyQueued) scheduleActivity();
+    }
+
     async function lock() {
       if (!active || leaving || lockPending) return;
       lockRequested = lockPending = true;
       pending?.abort();
       pending = null;
-      clearTimeout(timer);
       cover('locking');
       try {
         const response = await fetch('/api/access/lock', {
@@ -165,14 +231,38 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
       pending = null;
       cover(next);
     }
-    const hidden = () => suspend('checking');
+    function finishForegroundActivity() {
+      scheduleActivity(true);
+      // Let the final foreground update reach the server on navigation. A returning tab
+      // verifies independently rather than trusting a response from before it was hidden.
+      if (pending && !renewing) pending.abort();
+      pending = null;
+      renewing = false;
+    }
+    const pageHidden = () => {
+      finishForegroundActivity();
+      suspend('checking');
+    };
     const unavailable = () => suspend('unavailable');
+    const blurred = () => {
+      needsResumeCheck = true;
+    };
+    const resume = () => {
+      if (document.visibilityState !== 'visible' || !needsResumeCheck) return;
+      needsResumeCheck = false;
+      void check();
+    };
     const visibility = () => {
-      if (document.visibilityState === 'hidden') hidden();
-      else void check();
+      if (document.visibilityState === 'hidden') {
+        needsResumeCheck = true;
+        finishForegroundActivity();
+      } else resume();
     };
     const restored = (event: PageTransitionEvent) => {
-      if (event.persisted) void check();
+      if (event.persisted) {
+        needsResumeCheck = false;
+        void check(true);
+      }
     };
     const storage = (event: StorageEvent) => {
       if (event.key === lockSignal && event.newValue) endSession(false);
@@ -186,8 +276,12 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
         if (event.data === 'locked') endSession(false);
       };
     actions.current = { lock, check };
+    for (const event of interactionEvents)
+      document.addEventListener(event, interaction, { capture: true, passive: true });
     document.addEventListener('visibilitychange', visibility);
-    window.addEventListener('pagehide', hidden);
+    window.addEventListener('blur', blurred);
+    window.addEventListener('focus', resume);
+    window.addEventListener('pagehide', pageHidden);
     window.addEventListener('pageshow', restored);
     window.addEventListener('popstate', reconnect);
     window.addEventListener('online', reconnect);
@@ -199,9 +293,13 @@ export default function AuthenticatedWorkspace({ initialView }: { initialView?: 
       active = false;
       pending?.abort();
       clearTimeout(timer);
+      clearTimeout(activityTimer);
+      for (const event of interactionEvents) document.removeEventListener(event, interaction, true);
       channel?.close();
       document.removeEventListener('visibilitychange', visibility);
-      window.removeEventListener('pagehide', hidden);
+      window.removeEventListener('blur', blurred);
+      window.removeEventListener('focus', resume);
+      window.removeEventListener('pagehide', pageHidden);
       window.removeEventListener('pageshow', restored);
       window.removeEventListener('popstate', reconnect);
       window.removeEventListener('online', reconnect);

@@ -52,7 +52,7 @@ test(
       const request = route.request();
       const url = new URL(request.url());
       if (url.origin !== base) return route.abort();
-      if (url.pathname === '/api/access/status')
+      if (url.pathname === '/api/access/status' || url.pathname === '/api/access/activity')
         return route.fulfill({ json: { authenticated: true, expiresAt: Date.now() + 3_600_000 } });
       if (url.pathname === '/api/workspace') {
         if (request.method() === 'POST') {

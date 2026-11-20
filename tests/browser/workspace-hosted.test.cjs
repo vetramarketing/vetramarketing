@@ -122,9 +122,9 @@ test(
         { cert: await readFile(certFile), key: await readFile(keyFile) },
         (request, response) => {
           const pathname = new URL(request.url, 'https://' + hostname).pathname;
-          // PIN acceptance is always on A. Reads, saves and logout execute on B; status reads alternate.
+          // Unlock and logout run on A; activity and workspace calls run on B. Status reads alternate.
           const worker =
-            pathname === '/api/access/unlock'
+            pathname === '/api/access/unlock' || pathname === '/api/access/lock'
               ? 0
               : pathname === '/api/access/status'
                 ? statusCounter++ % 2
@@ -152,6 +152,11 @@ test(
             },
           );
           upstream.on('error', () => {
+            if (response.destroyed) return;
+            if (response.headersSent) {
+              response.destroy();
+              return;
+            }
             response.writeHead(502);
             response.end();
           });
@@ -217,6 +222,15 @@ test(
       page.on('pageerror', (error) => errors.push(error.message));
       const get = (path) =>
         page.evaluate(async (target) => (await fetch(target, { cache: 'no-store' })).status, path);
+      const session = (method) =>
+        page.evaluate(async (verb) => {
+          const endpoint = verb === 'POST' ? 'activity' : 'status';
+          const response = await fetch('/api/access/' + endpoint, {
+            method: verb,
+            cache: 'no-store',
+          });
+          return { status: response.status, body: await response.json() };
+        }, method);
       await page.goto(origin + '/groups');
       await page.waitForURL(origin + '/unlock?next=%2Fgroups');
       const visitor = await context.newPage();
@@ -230,8 +244,43 @@ test(
       assert.equal(nativeOrigin, origin);
       const cookie = (await context.cookies()).find((c) => c.name === 'vetra_session');
       assert.ok(cookie?.secure && cookie.httpOnly && cookie.sameSite === 'Strict');
-      assert.equal(await get('/api/access/status'), 200);
-      assert.equal(await get('/api/access/status'), 200);
+      const initial = await session('GET');
+      assert.equal(initial.status, 200);
+      assert.deepEqual(await session('GET'), initial);
+      const activityResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/access/activity' &&
+          response.request().method() === 'POST',
+      );
+      const beforeActivity = Date.now();
+      const renewed = await session('POST');
+      assert.equal(renewed.status, 200);
+      assert.equal(renewed.body.authenticated, true);
+      assert.ok(renewed.body.expiresAt > initial.body.expiresAt);
+      const week = 7 * 24 * 60 * 60 * 1000;
+      assert.ok(
+        renewed.body.expiresAt >= beforeActivity + week &&
+          renewed.body.expiresAt <= Date.now() + week,
+      );
+      const setCookie = (await (await activityResponse).headerValue('set-cookie')) || '';
+      const flags = setCookie
+        .split(';')
+        .slice(1)
+        .map((flag) => flag.trim());
+      for (const flag of [
+        'Secure',
+        'HttpOnly',
+        'SameSite=Strict',
+        'Path=/',
+        'Expires=' + new Date(renewed.body.expiresAt).toUTCString(),
+      ])
+        assert.ok(flags.includes(flag), 'activity cookie missing ' + flag);
+      assert.equal(
+        (await context.cookies()).find((c) => c.name === cookie.name)?.value,
+        cookie.value,
+      );
+      assert.deepEqual(await session('GET'), renewed);
+      assert.deepEqual(await session('GET'), renewed);
       assert.equal(await get('/api/workspace'), 404);
       const imported = await page.evaluate(
         async (body) =>
@@ -251,7 +300,13 @@ test(
       const chunk = await page.locator('script[src*="/_next/static/"]').first().getAttribute('src');
       assert.equal(await get(chunk), 200);
       assert.equal(new Set(statusWorkers).size, 2);
+      const editorActivity = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === '/api/access/activity',
+      );
       await page.getByRole('button', { name: 'Edit Hosted smoke group' }).click();
+      const activeEditor = await editorActivity;
+      assert.equal(activeEditor.status(), 200);
+      await activeEditor.finished();
       const notes = page.getByRole('textbox', { name: 'Posting notes', exact: true });
       await notes.fill('Pending notes during outage');
       // MongoDB's own test hook fails one session query, then lets the next request succeed.
@@ -277,6 +332,7 @@ test(
       await context.addCookies([cookie]);
       assert.equal(await get('/api/access/status'), 401);
       assert.equal(await get('/api/access/status'), 401);
+      assert.equal((await session('POST')).status, 401);
       await page.goto(origin + '/orders');
       await page.waitForURL(origin + '/unlock?next=%2Forders');
       assert.deepEqual(errors, []);

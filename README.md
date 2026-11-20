@@ -14,7 +14,9 @@ npm.cmd run dev
 
 Open http://127.0.0.1:3100. Thai is the initial language. The app saves the language choice in this browser.
 
-The site requires the PIN for workspace pages, downloads and API requests. A session expires after eight hours. Save any open edits before choosing **Lock workspace**. Locking ends that browser session across its tabs. The server allows up to five failed attempts in a rolling 15-minute window. Locally, the PIN verifier lives in the ignored `.env.local` and sessions persist in `.local-data/site-access/` independently of MongoDB. To rotate the local PIN, rerun `npm run set-pin` and restart the server. Rotation invalidates existing sessions.
+The site requires the PIN for workspace pages, downloads and API requests. A session expires after seven days without recorded activity. Typing, clicking, tapping or scrolling in the workspace renews it. Returning to an open tab quietly checks the session and keeps its existing deadline. Before leaving a shared computer, save any open edits and choose **Lock workspace**. This ends the session across that browser’s tabs.
+
+The server allows up to five failed PIN attempts in a rolling 15-minute window. Locally, the PIN verifier lives in the ignored `.env.local` and sessions persist in `.local-data/site-access/` independently of MongoDB. To rotate the local PIN, rerun `npm run set-pin` and restart the server. Rotation invalidates existing sessions.
 
 ```powershell
 npm.cmd run typecheck

@@ -10,13 +10,19 @@ const publicFiles = new Set([
   '/icon.svg',
   '/logo_white.svg',
 ]);
-const accessEndpoints = new Set(['/api/access/unlock', '/api/access/lock', '/api/access/status']);
+const accessEndpoints = new Set([
+  '/api/access/unlock',
+  '/api/access/lock',
+  '/api/access/status',
+  '/api/access/activity',
+]);
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const read = request.method === 'GET' || request.method === 'HEAD';
   if (!(read && publicFiles.has(path)) && !accessEndpoints.has(path)) {
-    const document = read && !path.startsWith('/api/') && !path.startsWith('/_next/') && !path.includes('.');
+    const document =
+      read && !path.startsWith('/api/') && !path.startsWith('/_next/') && !path.includes('.');
     const access = await checkRequestAccess(request, document);
     if (access instanceof Response) {
       if (!document || access.status === 503) return access;

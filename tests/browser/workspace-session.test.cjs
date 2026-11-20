@@ -6,6 +6,19 @@ const { serializeWorkspace, WORKSPACE_KEY } = require('../../src/lib/workspace-s
 const { unlockTestContext } = require('./access-fixture.cjs');
 
 const app = process.env.VETRA_TEST_BROWSER_URL;
+const hideTab = (page) =>
+  page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    window.dispatchEvent(new Event('blur'));
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+const returnToTab = (page) =>
+  page.evaluate(() => {
+    delete document.visibilityState;
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('focus'));
+  });
+
 test(
   'workspace access shields loaded drafts, cached records, other tabs and history',
   { skip: !app, timeout: 120_000 },
@@ -38,13 +51,17 @@ test(
       });
       t.after(() => context.close());
       await unlockTestContext(context, base);
-      const mock = { reads: 0 };
+      const mock = { reads: 0, renewals: 0 };
       await context.addInitScript(() => localStorage.setItem('vetra-marketing.locale', 'en'));
       await context.route('**/*', async (route) => {
         const { pathname, origin } = new URL(route.request().url());
         if (origin !== base) return route.abort();
         if (pathname === '/api/access/status')
           return mock.status ? mock.status(route) : route.continue();
+        if (pathname === '/api/access/activity') {
+          mock.renewals++;
+          return mock.activity ? mock.activity(route) : route.continue();
+        }
         if (pathname === '/api/access/lock') return mock.lock ? mock.lock(route) : route.continue();
         if (pathname === '/api/workspace' && route.request().method() === 'GET') {
           mock.reads++;
@@ -94,27 +111,211 @@ test(
     );
 
     await t.test(
-      'a returning tab keeps its editor shielded through an outage and restores its draft after verification',
+      'a routine tab switch verifies once in the background and leaves the focused draft editable',
+      async (t) => {
+        const { mock, page } = await fixture(t);
+        await page.goto(base + '/products');
+        await page.getByRole('button', { name: 'Edit Session test product' }).click();
+        const name = page.getByLabel('Product name', { exact: true });
+        const shield = page.locator('dialog[data-vetra-shield]');
+        await name.fill('Unsaved draft');
+        let release;
+        const gate = new Promise((resolve) => {
+          release = resolve;
+        });
+        let calls = 0;
+        mock.status = async (route) => {
+          calls++;
+          await gate;
+          await route.fulfill({ json: { authenticated: true, expiresAt: Date.now() + 60000 } });
+        };
+        const request = page.waitForRequest((r) => r.url().endsWith('/api/access/status'));
+        await hideTab(page);
+        assert.equal(await shield.isVisible(), false);
+        await returnToTab(page);
+        await request;
+        assert.equal(await shield.isVisible(), false);
+        assert.equal(await name.evaluate((el) => el === document.activeElement), true);
+        await name.press('End');
+        await name.pressSequentially(' continued');
+        assert.equal(await name.inputValue(), 'Unsaved draft continued');
+        const response = page.waitForResponse((r) => r.url().endsWith('/api/access/status'));
+        release();
+        await response;
+        assert.equal(calls, 1);
+        assert.equal(await shield.isVisible(), false);
+      },
+    );
+
+    await t.test(
+      'idle checks never renew; trusted input renews immediately and coalesces a final update',
+      async (t) => {
+        const { mock, page } = await fixture(t);
+        const now = Date.now();
+        await page.clock.install({ time: new Date(now) });
+        const status = { authenticated: true, expiresAt: now + 7 * 86400_000 };
+        mock.status = (route) => route.fulfill({ json: status });
+        mock.activity = (route) => {
+          assert.equal(route.request().method(), 'POST');
+          return route.fulfill({ json: status });
+        };
+        const response = () =>
+          page.waitForResponse((r) => r.url().endsWith('/api/access/activity'));
+        await page.goto(base + '/products');
+        const edit = page.getByRole('button', { name: 'Edit Session test product' });
+        await edit.waitFor();
+        await hideTab(page);
+        const checked = page.waitForResponse((r) => r.url().endsWith('/api/access/status'));
+        await returnToTab(page);
+        await checked;
+        await page.evaluate(() => {
+          for (const type of ['keydown', 'input', 'pointerdown', 'click', 'wheel', 'touchmove'])
+            document.dispatchEvent(new Event(type, { bubbles: true }));
+        });
+        await page.clock.fastForward(300_000);
+        assert.equal(mock.renewals, 0);
+
+        const first = response();
+        await edit.click();
+        await first;
+        const name = page.getByLabel('Product name', { exact: true });
+        await name.fill('Draft from keyboard');
+        await name.pressSequentially(' and mouse');
+        await page.mouse.wheel(0, 60);
+        await page.clock.fastForward(50_000);
+        assert.equal(mock.renewals, 1);
+        const trailing = response();
+        await page.clock.fastForward(11_000);
+        await trailing;
+        assert.equal(mock.renewals, 2);
+        await page.clock.fastForward(900_000);
+        assert.equal(mock.renewals, 2);
+        assert.equal(await name.inputValue(), 'Draft from keyboard and mouse');
+
+        const scroll = response();
+        await page.mouse.wheel(0, 120);
+        await scroll;
+        await name.press('End');
+        const final = response();
+        await hideTab(page);
+        await final;
+        assert.equal(mock.renewals, 4);
+        await page.clock.fastForward(900_000);
+        assert.equal(mock.renewals, 4);
+      },
+    );
+
+    await t.test(
+      'a foreground interaction renews a nearly expired session while a resume check is pending',
+      async (t) => {
+        const { mock, page } = await fixture(t);
+        const now = Date.now();
+        await page.clock.install({ time: new Date(now) });
+        mock.status = (route) =>
+          route.fulfill({ json: { authenticated: true, expiresAt: now + 5000 } });
+        mock.activity = (route) =>
+          route.fulfill({ json: { authenticated: true, expiresAt: now + 7 * 86400_000 } });
+        await page.goto(base + '/products');
+        const edit = page.getByRole('button', { name: 'Edit Session test product' });
+        await edit.waitFor();
+        let release;
+        const gate = new Promise((resolve) => {
+          release = resolve;
+        });
+        mock.status = async (route) => {
+          await gate;
+          await route
+            .fulfill({ json: { authenticated: true, expiresAt: now + 5000 } })
+            .catch(() => {});
+        };
+        await hideTab(page);
+        const checking = page.waitForRequest((r) => r.url().endsWith('/api/access/status'));
+        await returnToTab(page);
+        await checking;
+        const renewed = page.waitForResponse((r) => r.url().endsWith('/api/access/activity'));
+        await edit.click();
+        await renewed;
+        release();
+        const name = page.getByLabel('Product name', { exact: true });
+        await name.fill('Kept past the old deadline');
+        await page.clock.fastForward(6000);
+        assert.equal(await page.locator('dialog[data-vetra-shield]').isVisible(), false);
+        assert.equal(await name.inputValue(), 'Kept past the old deadline');
+      },
+    );
+
+    await t.test(
+      'another tab can renew the same session while an idle tab only reads the new deadline',
+      async (t) => {
+        const { mock, page, context, lock } = await fixture(t);
+        const now = Date.now();
+        let expiresAt = now + 8_000;
+        await page.clock.install({ time: new Date(now) });
+        mock.status = (route) => route.fulfill({ json: { authenticated: true, expiresAt } });
+        mock.activity = (route) => {
+          expiresAt = now + 7 * 86400_000;
+          return route.fulfill({ json: { authenticated: true, expiresAt } });
+        };
+        await page.goto(base + '/products');
+        await lock.waitFor();
+        await hideTab(page);
+        const second = await context.newPage();
+        await second.goto(base + '/products');
+        const renewed = second.waitForResponse((r) => r.url().endsWith('/api/access/activity'));
+        await second.getByRole('button', { name: 'Edit Session test product' }).click();
+        await renewed;
+        assert.equal(mock.renewals, 1);
+        const rechecked = page.waitForResponse((r) => r.url().endsWith('/api/access/status'));
+        await page.clock.fastForward(9_000);
+        await rechecked;
+        await page.bringToFront();
+        await returnToTab(page);
+        await lock.waitFor();
+        assert.equal(mock.renewals, 1);
+        assert.equal(await page.locator('dialog[data-vetra-shield]').isVisible(), false);
+      },
+    );
+
+    await t.test(
+      'a failed activity request keeps the draft covered until a successful status retry',
+      async (t) => {
+        const { mock, page } = await fixture(t);
+        let release;
+        const gate = new Promise((resolve) => {
+          release = resolve;
+        });
+        mock.activity = async (route) => {
+          await gate;
+          await route.fulfill({ status: 503, body: '' });
+        };
+        await page.goto(base + '/products');
+        const request = page.waitForRequest((r) => r.url().endsWith('/api/access/activity'));
+        await page.getByRole('button', { name: 'Edit Session test product' }).click();
+        await request;
+        const name = page.getByLabel('Product name', { exact: true });
+        await name.fill('Unsaved during activity outage');
+        release();
+        const retry = page.getByRole('button', { name: 'Retry', exact: true });
+        await retry.waitFor();
+        assert.equal(await name.isVisible(), false);
+        await retry.click();
+        await name.waitFor();
+        assert.equal(await name.inputValue(), 'Unsaved during activity outage');
+        assert.equal(mock.renewals, 1);
+      },
+    );
+
+    await t.test(
+      'a failed background check shields the draft, and a back-forward cache restore rechecks before uncovering it',
       async (t) => {
         const { mock, page } = await fixture(t);
         await page.goto(base + '/products');
         await page.getByRole('button', { name: 'Edit Session test product' }).click();
         const name = page.getByLabel('Product name', { exact: true });
         await name.fill('Unsaved session draft');
-        await page.evaluate(() => {
-          Object.defineProperty(document, 'visibilityState', {
-            configurable: true,
-            value: 'hidden',
-          });
-          document.dispatchEvent(new Event('visibilitychange'));
-        });
-        assert.equal(await page.getByRole('textbox', { name: 'Product name' }).count(), 0);
-        assert.ok(await page.locator('dialog[data-vetra-shield]').isVisible());
+        await hideTab(page);
         mock.status = (route) => route.fulfill({ status: 503, body: '' });
-        await page.evaluate(() => {
-          delete document.visibilityState;
-          window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
-        });
+        await returnToTab(page);
         const retry = page.getByRole('button', { name: 'Retry', exact: true });
         await retry.waitFor();
         await page.keyboard.press('Escape');
@@ -127,9 +328,21 @@ test(
           window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })),
         );
         assert.equal(await page.getByRole('textbox', { name: 'Product name' }).count(), 0);
+        let release;
+        const gate = new Promise((resolve) => {
+          release = resolve;
+        });
+        mock.status = async (route) => {
+          await gate;
+          await route.continue();
+        };
+        const restored = page.waitForRequest((r) => r.url().endsWith('/api/access/status'));
         await page.evaluate(() =>
           window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })),
         );
+        await restored;
+        assert.ok(await page.locator('dialog[data-vetra-shield]').isVisible());
+        release();
         await name.waitFor();
         assert.equal(await name.inputValue(), 'Unsaved session draft');
       },
@@ -220,6 +433,44 @@ test(
         await page.goto(base + '/products');
         await lock.waitFor();
         await page.waitForURL(base + '/unlock?next=%2Fproducts', { timeout: 8000 });
+      },
+    );
+
+    await t.test(
+      'expiry covers the workspace immediately while an earlier background check is still pending',
+      async (t) => {
+        const { mock, page, lock, revoke } = await fixture(t);
+        let calls = 0;
+        let release;
+        const gate = new Promise((resolve) => {
+          release = resolve;
+        });
+        mock.status = async (route) => {
+          if (++calls === 1)
+            return route.fulfill({ json: { authenticated: true, expiresAt: Date.now() + 2500 } });
+          await gate;
+          await route.fulfill({ status: 401, body: '' });
+        };
+        await page.goto(base + '/products');
+        await lock.waitFor();
+        const request = page.waitForRequest((r) => r.url().endsWith('/api/access/status'));
+        await hideTab(page);
+        await returnToTab(page);
+        await request;
+        const shield = page.locator('dialog[data-vetra-shield]');
+        assert.equal(await shield.isVisible(), false);
+        await shield.waitFor();
+        assert.equal(calls, 2);
+        await page.waitForFunction(
+          () =>
+            document.documentElement.hasAttribute('data-vetra-covered') &&
+            document.querySelector('dialog[data-vetra-shield]')?.matches(':modal') &&
+            document.querySelector('main')?.closest('[inert]'),
+        );
+        await lock.waitFor({ state: 'hidden' });
+        await revoke();
+        release();
+        await page.waitForURL(base + '/unlock?next=%2Fproducts');
       },
     );
 

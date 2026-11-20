@@ -64,9 +64,46 @@ test(
     assert.ok(session?.includes('HttpOnly') && session.includes('SameSite=Strict'));
     const cookie = session.split(';', 1)[0];
     try {
+      const activity = '/api/access/activity';
+      const current = await get('/api/access/status', cookie);
+      const initial = await current.json();
+      assert.equal(current.headers.get('set-cookie'), null);
+      assert.equal((await get(activity, cookie)).status, 405);
+      for (const sender of [null, 'https://unrelated.example.test']) {
+        const response = await fetch(new URL(activity, origin), {
+          method: 'POST',
+          redirect: 'manual',
+          headers: { Cookie: cookie, ...(sender && { Origin: sender }) },
+        });
+        assert.equal(response.status, 403);
+        assert.equal(response.headers.get('set-cookie'), null);
+      }
+      assert.deepEqual(await (await get('/api/access/status', cookie)).json(), initial);
+      const beforeActivity = Date.now();
+      const refresh = await post(activity, null, cookie);
+      const sevenDays = 7 * 24 * 60 * 60;
+      assert.equal(refresh.status, 200);
+      assert.match(refresh.headers.get('cache-control'), /no-store/);
+      const renewed = await refresh.json();
+      assert.equal(renewed.authenticated, true);
+      assert.ok(renewed.expiresAt >= beforeActivity + sevenDays * 1000);
+      assert.ok(renewed.expiresAt <= Date.now() + sevenDays * 1000);
+      const refreshedCookie = refresh.headers.get('set-cookie');
+      assert.ok(refreshedCookie?.split(';', 1)[0] === cookie);
+      assert.match(refreshedCookie, /; HttpOnly(?:;|$)/);
+      assert.match(refreshedCookie, /; SameSite=Strict(?:;|$)/);
+      assert.match(refreshedCookie, /; Path=\/(?:;|$)/);
+      assert.equal(/; Secure(?:;|$)/.test(refreshedCookie), new URL(origin).protocol === 'https:');
+      assert.equal(
+        refreshedCookie.match(/; Expires=([^;]+)/i)?.[1],
+        new Date(renewed.expiresAt).toUTCString(),
+      );
+      const age = Number(refreshedCookie.match(/; Max-Age=(\d+)/i)?.[1]);
+      assert.ok(age >= sevenDays - 2 && age <= sevenDays);
       const status = await get('/api/access/status', cookie);
       assert.equal(status.status, 200);
-      assert.ok((await status.json()).expiresAt > Date.now());
+      assert.equal(status.headers.get('set-cookie'), null);
+      assert.deepEqual(await status.json(), renewed);
       const page = await get('/orders', cookie);
       assert.equal(page.status, 200);
       assert.match(page.headers.get('cache-control'), /no-store/);
@@ -80,6 +117,9 @@ test(
       assert.equal((await post('/api/access/lock', null, cookie)).status, 303);
     }
     assert.equal((await get('/api/access/status', cookie)).status, 401);
+    const revoked = await post('/api/access/activity', null, cookie);
+    assert.equal(revoked.status, 401);
+    assert.equal(revoked.headers.get('set-cookie'), null);
     assert.equal((await get('/orders', cookie)).status, 303);
   },
 );

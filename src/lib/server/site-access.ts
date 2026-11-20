@@ -3,10 +3,15 @@ import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { viewFromPath, workspacePath } from '../workspace-routes';
-import { readMongoAccessSession, reserveMongoAttempt, revokeMongoSessions } from './mongo-access';
+import {
+  readMongoAccessSession,
+  renewMongoAccessSession,
+  reserveMongoAttempt,
+  revokeMongoSessions,
+} from './mongo-access';
 
 export const SESSION_COOKIE_NAME = 'vetra_session';
-export const SESSION_SECONDS = 8 * 60 * 60;
+export const SESSION_SECONDS = 7 * 24 * 60 * 60;
 const windowMs = 15 * 60 * 1000;
 const maxAttempts = 5;
 const hashFormat = /^scrypt:([0-9a-f]{32}):([0-9a-f]{128})$/;
@@ -100,12 +105,16 @@ function cookieValues(request: SessionRequest) {
 }
 const validToken = (value: string) => value.length === 43 && /^[A-Za-z0-9_-]{43}$/.test(value);
 
+export function accessSessionToken(request: SessionRequest): string | null {
+  const tokens = cookieValues(request);
+  return tokens.length === 1 && validToken(tokens[0]) ? tokens[0] : null;
+}
+
 export async function readAccessSession(
   request: SessionRequest,
 ): Promise<{ expiresAt: number } | null> {
-  const tokens = cookieValues(request);
-  if (tokens.length !== 1 || !validToken(tokens[0])) return null;
-  const token = tokens[0];
+  const token = accessSessionToken(request);
+  if (!token) return null;
   const config = configuration();
   if (!config) {
     if (process.env.VERCEL) throw new SessionStoreUnavailable();
@@ -129,12 +138,44 @@ export async function readAccessSession(
   }
 }
 
+/** Explicit human activity extends an existing session. Status checks leave its deadline alone. */
+export async function renewAccessSession(
+  request: SessionRequest,
+): Promise<{ expiresAt: number } | null> {
+  const token = accessSessionToken(request);
+  if (!token) return null;
+  const config = configuration();
+  if (!config) {
+    if (process.env.VERCEL) throw new SessionStoreUnavailable();
+    return null;
+  }
+  try {
+    const digest = hash(token);
+    const duration = SESSION_SECONDS * 1000;
+    if (process.env.VERCEL) return await renewMongoAccessSession(config.id, digest, duration);
+    const db = database();
+    return transaction(db, () => {
+      activateGeneration(db, config.id);
+      const now = Date.now();
+      const row = db
+        .prepare(
+          'UPDATE access_sessions SET expires=MAX(expires, ?) WHERE digest=? AND expires>? RETURNING expires',
+        )
+        .get(now + duration, digest, now);
+      return typeof row?.expires === 'number' ? { expiresAt: row.expires } : null;
+    });
+  } catch {
+    throw new SessionStoreUnavailable();
+  }
+}
+
 export async function hasValidSession(request: SessionRequest): Promise<boolean> {
   return (await readAccessSession(request)) !== null;
 }
 
 export type UnlockResult =
-  { status: 'accepted'; token: string } | { status: 'invalid' | 'limited' | 'unavailable' };
+  | { status: 'accepted'; token: string; expiresAt: number }
+  | { status: 'invalid' | 'limited' | 'unavailable' };
 
 function reserveLocalAttempt(fingerprint: string) {
   const db = database();
@@ -175,8 +216,9 @@ export async function unlockAccess(pin: string, request: Request): Promise<Unloc
     if (configuration()?.id !== config.id) return { status: 'unavailable' };
     const previous = cookieValues(request).filter(validToken).map(hash);
     const token = randomBytes(32).toString('base64url');
-    const saved = await issue(hash(token), previous, Date.now() + SESSION_SECONDS * 1000);
-    return saved ? { status: 'accepted', token } : { status: 'unavailable' };
+    const expiresAt = Date.now() + SESSION_SECONDS * 1000;
+    const saved = await issue(hash(token), previous, expiresAt);
+    return saved ? { status: 'accepted', token, expiresAt } : { status: 'unavailable' };
   } catch {
     return { status: 'unavailable' };
   }

@@ -10,6 +10,8 @@ Run the project with its loopback-bound start or dev script. The workspace API a
 
 The production site accepts same-origin requests on the exact HTTPS domain supplied by `VERCEL_PROJECT_PRODUCTION_URL`. If that variable is absent, set `VETRA_WORKSPACE_ORIGIN` to the full production HTTPS origin. Preview deployments cannot unlock the production workspace. The hosted PIN gate stores session digests, expiration dates and attempt counters in the database's `vetra_access_sessions` and `vetra_access_state` collections. MongoDB must be reachable during sign-in and session checks. See the [Vercel setup in the README](../README.md#run-on-vercel).
 
+Unlocking starts a seven-day idle timeout. While the operator uses the workspace, the browser sends a same-origin `POST /api/access/activity` to extend the current session and its cookie. A routine tab switch reads `GET /api/access/status` and preserves the current deadline. If verification is unavailable, the workspace covers the open editor and offers **Retry**. After seven days of inactivity, the PIN is required again. Save open edits before using **Lock workspace** to end the session across the browser’s tabs immediately.
+
 ## Workspace and file storage
 
 The wire format is the same versioned JSON contract as workspace backups. Current writes use v12. The server validates the workspace and preserves application IDs, ordering, nested records, order sequences, shipping settings, applied data updates and Trash. The active browser key and older recovery keys remain available during migration. The locale, selected company and daily click counters are browser preferences.

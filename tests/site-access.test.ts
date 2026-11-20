@@ -15,6 +15,7 @@ import {
   closeAccessDatabase,
   hasValidSession,
   readAccessSession,
+  renewAccessSession,
   SessionStoreUnavailable,
   safeWorkspaceReturn,
   SESSION_COOKIE_NAME,
@@ -96,6 +97,7 @@ test('an unavailable hosted database fails closed while local sessions work offl
   assert.equal(await hasValidSession(lookup(cookie)), true);
   process.env.VERCEL = '1';
   await assert.rejects(hasValidSession(lookup(cookie)), SessionStoreUnavailable);
+  await assert.rejects(renewAccessSession(lookup(cookie)), SessionStoreUnavailable);
   const unavailable = await checkRequestAccess(lookup(cookie));
   assert.ok(unavailable instanceof Response);
   assert.equal(unavailable.status, 503);
@@ -119,7 +121,7 @@ test('an unavailable hosted database fails closed while local sessions work offl
   assert.ok(await hasValidSession(lookup(cookie)));
 });
 
-test('verified PIN issues an opaque, persistent and revocable eight-hour session', async (t) => {
+test('verified PIN issues an opaque, persistent and revocable seven-day session', async (t) => {
   const { pin, file } = await fixture(t);
   assert.equal(await hasValidSession(lookup('')), false);
   assert.equal(existsSync(file), false);
@@ -167,6 +169,42 @@ test('verified PIN issues an opaque, persistent and revocable eight-hour session
   assert.match(locked.headers.get('set-cookie')!, /Max-Age=0/);
   closeAccessDatabase();
   assert.equal(await hasValidSession(lookup(renewed)), false);
+  assert.equal(await renewAccessSession(lookup(renewed)), null);
+});
+
+test('explicit activity renews a live legacy session for seven days; passive reads preserve its deadline', async (t) => {
+  const { pin, file } = await fixture(t);
+  let time = Date.now();
+  t.mock.method(Date, 'now', () => time);
+  const session = await unlockAccess(pin, form(pin));
+  assert.equal(session.status, 'accepted');
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  assert.equal(session.expiresAt, time + sevenDays);
+  const cookie = SESSION_COOKIE_NAME + '=' + session.token;
+  closeAccessDatabase();
+  const db = new DatabaseSync(file);
+  const legacyExpiry = time + 8 * 60 * 60 * 1000;
+  try {
+    db.prepare('UPDATE access_sessions SET expires=?').run(legacyExpiry);
+  } finally {
+    db.close();
+  }
+  time = legacyExpiry - 1;
+  assert.equal(await renewAccessSession(lookup(cookie + '; ' + cookie)), null);
+  assert.deepEqual(await readAccessSession(lookup(cookie)), { expiresAt: legacyExpiry });
+  const extended = await renewAccessSession(lookup(cookie));
+  assert.deepEqual(extended, { expiresAt: time + sevenDays });
+  closeAccessDatabase();
+  time += 6 * 24 * 60 * 60 * 1000;
+  assert.deepEqual(await readAccessSession(lookup(cookie)), extended);
+  const next = await renewAccessSession(lookup(cookie));
+  assert.deepEqual(next, { expiresAt: time + sevenDays });
+  time = next.expiresAt;
+  assert.equal(await readAccessSession(lookup(cookie)), null);
+  assert.equal(await renewAccessSession(lookup(cookie)), null);
+  // The server distinguishes an inaccessible store from a known expired session.
+  process.env.VETRA_SITE_ACCESS_DIRECTORY = file;
+  await assert.rejects(renewAccessSession(lookup(cookie)), SessionStoreUnavailable);
 });
 
 test('invalid settings fail closed and configuration rotation permanently revokes issued sessions', async (t) => {
@@ -179,9 +217,11 @@ test('invalid settings fail closed and configuration rotation permanently revoke
   process.env.WORKSPACE_PIN_HASH = 'unusable';
   assert.equal(errorLocation(await unlockRequest(form(pin))), 'unavailable');
   process.env.WORKSPACE_PIN_HASH = pinHash(pin);
+  assert.equal(await renewAccessSession(lookup(token)), null);
   assert.equal(await hasValidSession(lookup(token)), false);
   process.env.WORKSPACE_PIN_HASH = original;
   assert.equal(await hasValidSession(lookup(token)), false);
+  assert.equal(await renewAccessSession(lookup(token)), null);
   assert.ok(await hasValidSession(lookup(sessionHeader(await unlockRequest(form(pin))))));
 });
 

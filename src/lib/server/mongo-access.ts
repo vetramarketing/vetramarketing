@@ -122,6 +122,23 @@ export async function readMongoAccessSession(fingerprint: string, digest: string
   return state.expiresAt ? { expiresAt: state.expiresAt.getTime() } : null;
 }
 
+export function renewMongoAccessSession(fingerprint: string, digest: string, duration: number) {
+  return withGeneration(fingerprint, async (state, db, session) => {
+    const now = Date.now();
+    const row = await sessions(db).findOneAndUpdate(
+      {
+        _id: digest,
+        scope: state._id,
+        generation: state.generation,
+        expiresAt: { $gt: new Date(now) },
+      },
+      { $max: { expiresAt: new Date(now + duration) } },
+      { session, returnDocument: 'after', projection: { expiresAt: 1 } },
+    );
+    return row ? { expiresAt: row.expiresAt.getTime() } : null;
+  });
+}
+
 export async function reserveMongoAttempt(fingerprint: string, windowMs: number, maximum: number) {
   const id = randomUUID();
   const reserved = await withGeneration(fingerprint, async (state, db, session) => {
