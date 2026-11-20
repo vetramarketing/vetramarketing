@@ -3,6 +3,9 @@ const config: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
   agentRules: false,
+  experimental: {
+    agentUpgrade: 'security',
+  },
   async headers() {
     return [
       {
