@@ -66,16 +66,26 @@ type WorkspaceState =
   | { kind: 'empty'; scope: string }
   | { kind: 'ready'; scope: string; migrationSourceDigest: string; snapshot: WorkspaceSnapshot };
 
-async function sourceDigest(workspace: Workspace) {
-  const bytes = new TextEncoder().encode(JSON.stringify(serializeWorkspace(workspace)));
+// SHA-256 of the unedited v12 workspace produced by the shipped November 2026 starter updates.
+const bundledStarterDigest = 'f59e632d53caead7bf07cd423aa445fffa0abf10211d47ca9922b5b4fe5fe822';
+
+async function sourceDigest(serialized: string) {
+  const bytes = new TextEncoder().encode(serialized);
   const hash = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(hash), (value) => value.toString(16).padStart(2, '0')).join('');
 }
 
-export async function browserSourceNeedsReview(digest?: string) {
+export async function browserSourceNeedsReview(digest?: string, storage?: WorkspaceStorage) {
   if (!digest) return false;
-  const source = readBrowserMigrationSource();
-  return !!source && (await sourceDigest(source.workspace)) !== digest;
+  const source = readBrowserMigrationSource(storage);
+  if (!source) return false;
+  const canonical = JSON.stringify(serializeWorkspace(source.workspace));
+  const browserDigest = await sourceDigest(canonical);
+  if (browserDigest === digest) return false;
+  if (browserDigest !== bundledStarterDigest) return true;
+  if (source.raw === canonical) return false;
+  // Ignore whitespace but retain the warning for extra fields or a different stored format.
+  return JSON.stringify(JSON.parse(source.raw)) !== canonical;
 }
 
 async function readResponse(response: Response): Promise<WorkspaceState> {
@@ -262,7 +272,7 @@ export async function connectWorkspace(
   const initialize =
     initial.kind === 'empty'
       ? async (workspace: Workspace) => {
-          const digest = await sourceDigest(workspace);
+          const digest = await sourceDigest(JSON.stringify(serializeWorkspace(workspace)));
           await save(workspace, null, `browser-import-${digest}`);
           const verified = await getState();
           if (

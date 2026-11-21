@@ -1,8 +1,22 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { ensureVetraCompanyName } from '../src/lib/company-name-update';
 import { createEmptyWorkspace } from '../src/lib/data';
-import { connectWorkspace, readBrowserMigrationSource } from '../src/lib/http-workspace-repository';
+import {
+  browserSourceNeedsReview,
+  connectWorkspace,
+  readBrowserMigrationSource,
+} from '../src/lib/http-workspace-repository';
+import { ensureProvidedConsoleScripts } from '../src/lib/provided-console-scripts';
+import { ensureProvidedMetaRemaining } from '../src/lib/provided-meta-remaining';
+import { ensureProvidedMetaUnmatchedPosts } from '../src/lib/provided-meta-unmatched-posts';
+import { ensureProvidedMetaUpdate } from '../src/lib/provided-meta-update';
+import { ensureProvidedMissingPosts } from '../src/lib/provided-missing-posts';
+import { ensureProvidedPostLinks } from '../src/lib/provided-post-links';
+import { ensureProvidedProducts } from '../src/lib/provided-products';
+import { ensureProvidedSoftwareGroups } from '../src/lib/provided-software-groups';
+import { ensureProvidedViewerUpdates } from '../src/lib/provided-viewers-update';
 import {
   LocalWorkspaceRepository,
   WorkspaceRevisionConflict,
@@ -29,6 +43,66 @@ test('migration source lookup keeps original bytes, never seeds a fresh browser 
   assert.equal(readBrowserMigrationSource(storage)?.key, V11_WORKSPACE_KEY);
   values.set(WORKSPACE_KEY, '{');
   assert.throws(() => readBrowserMigrationSource(storage), WorkspaceUnreadableError);
+});
+
+test('only the November starter in its shipped key order skips review against a different MongoDB import', async () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+  };
+  const local = new LocalWorkspaceRepository(storage, null);
+  let snapshot = await local.load();
+  for (const update of [
+    ensureVetraCompanyName,
+    ensureProvidedProducts,
+    ensureProvidedPostLinks,
+    ensureProvidedViewerUpdates,
+    ensureProvidedMissingPosts,
+    ensureProvidedMetaUpdate,
+    ensureProvidedMetaUnmatchedPosts,
+    ensureProvidedMetaRemaining,
+    ensureProvidedSoftwareGroups,
+    ensureProvidedConsoleScripts,
+  ]) {
+    snapshot = await update(local, snapshot);
+  }
+  const starter = serializeWorkspace(snapshot.workspace);
+  const original = values.get(WORKSPACE_KEY)!;
+  const fingerprint = (raw: string) => createHash('sha256').update(raw).digest('hex');
+  assert.equal(
+    fingerprint(original),
+    'f59e632d53caead7bf07cd423aa445fffa0abf10211d47ca9922b5b4fe5fe822',
+  );
+  const mongoDigest = fingerprint(JSON.stringify(encoded));
+  async function checkReview(key: string, raw: string, digest: string, expected: boolean) {
+    values.clear();
+    values.set(key, raw);
+    const before = new Map(values);
+    assert.equal(await browserSourceNeedsReview(digest, storage), expected);
+    assert.deepEqual(values, before);
+  }
+
+  await checkReview(WORKSPACE_KEY, original, mongoDigest, false);
+  await checkReview(WORKSPACE_KEY, JSON.stringify(starter, null, 2), mongoDigest, false);
+  const reordered = Object.fromEntries(Object.entries(starter).reverse());
+  await checkReview(WORKSPACE_KEY, JSON.stringify(reordered), mongoDigest, true);
+
+  const edited = structuredClone(starter);
+  edited.posts[0].pinned = !edited.posts[0].pinned;
+  const editedRaw = JSON.stringify(edited);
+  await checkReview(WORKSPACE_KEY, editedRaw, mongoDigest, true);
+  await checkReview(WORKSPACE_KEY, editedRaw, fingerprint(editedRaw), false);
+
+  const annotated = structuredClone(starter);
+  Object.assign(annotated.posts[0], { privateNote: 'Preserve my note' });
+  await checkReview(WORKSPACE_KEY, JSON.stringify(annotated), mongoDigest, true);
+  await checkReview(
+    V11_WORKSPACE_KEY,
+    JSON.stringify({ ...starter, version: 11 }),
+    mongoDigest,
+    true,
+  );
 });
 
 test('only an explicitly unconfigured service selects browser storage', async (t) => {
